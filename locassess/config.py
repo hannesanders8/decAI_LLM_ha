@@ -37,6 +37,7 @@ class CorpusCfg(_Strict):
     queries_per_criterion: int = Field(2, ge=1)
     hits_per_query: int = Field(10, ge=1)
     min_relevance: int = Field(1, ge=0, le=2)
+    max_found_articles: int | None = Field(None, ge=1)   # stop searching after this many unique articles
 
 
 class ModelsCfg(_Strict):

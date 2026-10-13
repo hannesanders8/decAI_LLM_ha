@@ -237,3 +237,27 @@ def test_cli_build_rejects_unknown_criteria(tmp_path):
     r = CliRunner().invoke(app, ["corpus", "build", "--criteria", "H02,H99", "--config", str(EXAMPLE_CONFIG),
                                  "--db", str(tmp_path / "x.db")])
     assert r.exit_code != 0
+
+
+def test_queries_run_round_robin_over_criteria(setup):
+    conn, cfg, criteria, llm, search, fetcher = setup
+    build_corpus(conn, cfg, criteria, llm, search, fetcher, run_date=RUN)
+    order = [c["query"].split()[1:3] for c in search.calls]
+    assert order == [["H01", "en"], ["H02", "en"], ["H03", "en"], ["H01", "de"], ["H02", "de"], ["H03", "de"]]
+
+
+def test_max_found_articles_stops_search(setup):
+    conn, cfg, criteria, llm, search, fetcher = setup
+    cfg.corpus.max_found_articles = 4
+    cid = build_corpus(conn, cfg, criteria, llm, search, fetcher, run_date=RUN)
+    # H01 en finds a1, a3, a4 (3); H02 en adds a2 (4) → the remaining new URLs are over the limit
+    assert [c["query"].split()[1] for c in search.calls] == ["H01", "H02"]
+    assert [v["main_id"] for p, v in llm.calls if p == "query_generation"] == ["H01", "H02"]  # H03 never generated
+    arts = repo.get_articles(conn, cid)
+    assert len(arts) == 4 and len(fetcher.calls) == 3          # a3 not whitelisted → not downloaded
+    over = conn.execute("SELECT url FROM search_hit WHERE status = 'over_limit'").fetchall()
+    assert [r["url"] for r in over] == ["https://www.mdr.de/a5", "https://www.mdr.de/a6"]
+    summary, _ = selection_log(conn, cid)
+    hits = next(r for r in summary if r["step"] == "search_hits")
+    assert hits["detail"] == "2 new URLs beyond max_found_articles (not used)"
+    assert next(r for r in summary if r["step"] == "unique_urls")["count"] == 4

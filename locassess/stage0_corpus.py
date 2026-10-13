@@ -422,31 +422,64 @@ def _new_corpus(conn: sqlite3.Connection, cfg: AppConfig, run_date: date, note: 
 
 
 def _record_hits(conn: sqlite3.Connection, corpus_id: int, query_id: int, hits: list[SearchHit],
-                 known: dict[str, int]) -> None:
-    """Store hits; create one article row per new normalized URL."""
+                 known: dict[str, int], limit: int | None = None) -> None:
+    """Store hits; create one article row per new normalized URL, up to `limit` articles in total.
+    New URLs beyond the limit are logged with status `over_limit` and not processed."""
     for h in hits:
         norm = normalize_url(h.url)
         if norm in known:
             repo.insert_search_hit(conn, query_id, h.url, h.title, h.rank, "duplicate_url",
                                    f"same URL as article {known[norm]}")
             continue
+        if limit is not None and len(known) >= limit:
+            repo.insert_search_hit(conn, query_id, h.url, h.title, h.rank, "over_limit",
+                                   f"max_found_articles = {limit} reached")
+            continue
         known[norm] = repo.insert_article(conn, corpus_id, url=h.url, domain=host_of(h.url),
                                           title=h.title or None)
         repo.insert_search_hit(conn, query_id, h.url, h.title, h.rank, "new_url")
 
 
+def _interleave_languages(queries: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """en1, de1, en2, de2 … instead of en1, en2, de1, de2."""
+    by_lang: dict[str, list] = {}
+    for q in queries:
+        by_lang.setdefault(q[0], []).append(q)
+    lists = list(by_lang.values())
+    return [l[i] for i in range(max((len(l) for l in lists), default=0)) for l in lists if i < len(l)]
+
+
 def build_corpus(conn: sqlite3.Connection, cfg: AppConfig, criteria: list[MainCriterion], llm: LLM,
                  search: SearchProvider, fetch: Fetcher, run_date: date | None = None,
                  note: str | None = None, progress: Progress = _quiet, codebook: Codebook | None = None) -> int:
-    """Stage 0 steps 1–6. Returns the corpus_id; the corpus is not frozen yet."""
+    """Stage 0 steps 1–6. Returns the corpus_id; the corpus is not frozen yet.
+
+    Queries run round-robin over the criteria (first query of every criterion, then the second,
+    …) so that a limit on found articles (`corpus.max_found_articles`) does not favour the first
+    criteria. Queries are generated only for criteria the search actually reaches, and searching
+    stops as soon as the limit is reached.
+    """
     whitelist = load_whitelist(cfg.whitelist_file)
     corpus_id, date_from, date_to = _new_corpus(conn, cfg, run_date or cfg.resolved_run_date(), note)
     domains = sorted({e.domain for e in whitelist})
+    limit = cfg.corpus.max_found_articles
     known: dict[str, int] = {}
-    for main in criteria:
-        progress(f"queries for {main.main_id} {main.name}")
-        queries, prompt_version = generate_queries(llm, cfg, main, date_from, date_to, codebook)
-        for lang, text in queries:
+    generated: dict[str, tuple[list[tuple[str, str]], str | None]] = {}
+    rounds = cfg.corpus.queries_per_criterion * len(query_languages(cfg))
+    for i in range(rounds):
+        for main in criteria:
+            if limit is not None and len(known) >= limit:
+                progress(f"limit of {limit} found articles reached; searching stops")
+                _process_articles(conn, corpus_id, cfg, criteria, whitelist, llm, fetch, date_from, date_to, progress)
+                return corpus_id
+            if main.main_id not in generated:
+                progress(f"queries for {main.main_id} {main.name}")
+                queries, pv = generate_queries(llm, cfg, main, date_from, date_to, codebook)
+                generated[main.main_id] = (_interleave_languages(queries), pv)
+            queries, prompt_version = generated[main.main_id]
+            if i >= len(queries):
+                continue
+            lang, text = queries[i]
             qid = repo.insert_search_query(conn, corpus_id, main.main_id, text, lang, prompt_version)
             try:
                 hits = search.search(text, domains, date_from, date_to, cfg.corpus.hits_per_query)
@@ -454,7 +487,8 @@ def build_corpus(conn: sqlite3.Connection, cfg: AppConfig, criteria: list[MainCr
                 progress(f"  search failed for {text!r}: {exc}")
                 continue
             repo.set_query_hit_count(conn, qid, len(hits))
-            _record_hits(conn, corpus_id, qid, hits, known)
+            _record_hits(conn, corpus_id, qid, hits, known, limit)
+            progress(f"  {main.main_id} [{lang}] {text!r}: {len(hits)} hits, {len(known)} articles found")
     _process_articles(conn, corpus_id, cfg, criteria, whitelist, llm, fetch, date_from, date_to, progress)
     return corpus_id
 
@@ -629,6 +663,9 @@ def selection_log(conn: sqlite3.Connection, corpus_id: int) -> tuple[list[dict],
     n_hits = conn.execute(
         "SELECT COUNT(*) FROM search_hit JOIN search_query USING (query_id) WHERE corpus_id = ?", (corpus_id,),
     ).fetchone()[0]
+    n_over = conn.execute(
+        "SELECT COUNT(*) FROM search_hit JOIN search_query USING (query_id) WHERE corpus_id = ? AND status = 'over_limit'",
+        (corpus_id,)).fetchone()[0]
     articles = repo.get_articles(conn, corpus_id)
     reasons = Counter(a["exclusion_reason"] for a in articles if a["exclusion_reason"])
 
@@ -647,7 +684,8 @@ def selection_log(conn: sqlite3.Connection, corpus_id: int) -> tuple[list[dict],
 
     summary = [
         {"step": "queries", "count": n_queries, "detail": ""},
-        {"step": "search_hits", "count": n_hits, "detail": ""},
+        {"step": "search_hits", "count": n_hits,
+         "detail": f"{n_over} new URLs beyond max_found_articles (not used)" if n_over else ""},
         {"step": "unique_urls", "count": n_unique, "detail": f"{n_hits - n_unique} duplicate URLs across queries"},
         {"step": "whitelisted", "count": n_whitelisted,
          "detail": f"{n_pending} not processed yet (run unfinished)" if n_pending else ""},

@@ -53,6 +53,11 @@ locassess corpus freeze --corpus 1           # split into sentences, make the co
 
 `build` and `import` print the selection log and do not freeze, so the corpus can be reviewed first.
 
+To save API cost, `corpus.max_found_articles` (e.g. 15) stops the search once that many unique
+articles have been found; they then go through fetch, filter, relevance and selection as usual.
+Queries run round-robin over the criteria (first query of every criterion, then the second …),
+so the limit does not favour the first criteria; further hits are logged as `over_limit`.
+
 ### Stage 1 — evidence extraction
 
 ```bash
