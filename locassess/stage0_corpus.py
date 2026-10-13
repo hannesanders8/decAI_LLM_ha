@@ -612,21 +612,25 @@ def selection_log(conn: sqlite3.Connection, corpus_id: int) -> tuple[list[dict],
     articles = repo.get_articles(conn, corpus_id)
     reasons = Counter(a["exclusion_reason"] for a in articles if a["exclusion_reason"])
 
-    def excluded(prefix: str) -> int:
-        return sum(n for r, n in reasons.items() if r.startswith(prefix))
+    # Counts come from what actually happened to each article, so an unfinished run is reported truthfully.
+    def reason_of(a) -> str:
+        return a["exclusion_reason"] or ""
 
     n_unique = len(articles)
     n_whitelisted = n_unique - reasons.get("filter:domain_not_whitelisted", 0)
-    n_fetched = n_whitelisted - excluded("fetch:")
-    n_passed = n_fetched - (excluded("filter:") - reasons.get("filter:domain_not_whitelisted", 0))
-    n_relevant = n_passed - excluded("relevance:")
+    n_pending = sum(1 for a in articles if a["fetched_at"] is None and not a["exclusion_reason"])
+    n_fetched = sum(1 for a in articles if a["text"] is not None)
+    n_passed = sum(1 for a in articles if a["text"] is not None
+                   and (not a["exclusion_reason"] or reason_of(a).startswith(("relevance:", "selection:"))))
+    n_relevant = sum(1 for a in articles if a["relevance"] is not None and not reason_of(a).startswith("relevance:"))
     n_selected = sum(1 for a in articles if a["selected"])
 
     summary = [
         {"step": "queries", "count": n_queries, "detail": ""},
         {"step": "search_hits", "count": n_hits, "detail": ""},
         {"step": "unique_urls", "count": n_unique, "detail": f"{n_hits - n_unique} duplicate URLs across queries"},
-        {"step": "whitelisted", "count": n_whitelisted, "detail": ""},
+        {"step": "whitelisted", "count": n_whitelisted,
+         "detail": f"{n_pending} not processed yet (run unfinished)" if n_pending else ""},
         {"step": "fetched", "count": n_fetched, "detail": ""},
         {"step": "passed_filter", "count": n_passed, "detail": ""},
         {"step": "relevant", "count": n_relevant, "detail": ""},

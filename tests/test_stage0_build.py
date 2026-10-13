@@ -173,3 +173,13 @@ def test_cli_freeze_and_log(setup, tmp_path):
     r = runner.invoke(app, ["corpus", "log", "--corpus", str(cid), "--out", str(tmp_path / "res"), "--db", str(db)])
     assert r.exit_code == 0, r.output
     assert (tmp_path / "res" / f"selection_log_corpus{cid}.csv").exists()
+
+
+def test_selection_log_unfinished_run(conn):
+    cid = repo.create_corpus(conn, "{}", "2021-10-13", "2026-10-13", "h")
+    for i in range(3):
+        repo.insert_article(conn, cid, url=f"https://lvz.de/{i}", domain="lvz.de")
+    summary, _ = selection_log(conn, cid)
+    counts = {r["step"]: r for r in summary}
+    assert counts["fetched"]["count"] == 0 and counts["passed_filter"]["count"] == 0
+    assert "3 not processed yet" in counts["whitelisted"]["detail"]
