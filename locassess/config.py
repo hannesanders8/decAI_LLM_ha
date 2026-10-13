@@ -98,6 +98,9 @@ class AppConfig(_Strict):
     scoring: ScoringCfg = Field(default_factory=ScoringCfg)
     weights_default: int = Field(1, ge=0, le=10)
     report: ReportCfg = Field(default_factory=ReportCfg)
+    # USD per 1M tokens, used by the cost evaluation when call_log has no cost (SPEC §13 "Cost & latency").
+    prices: dict[str, dict[Literal["input", "output"], float]] = Field(
+        default_factory=lambda: {"gpt-6-luna": {"input": 0.10, "output": 0.0}})
 
     def resolved_run_date(self) -> date:
         """The configured run date, or today if none is fixed."""

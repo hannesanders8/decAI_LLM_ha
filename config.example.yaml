@@ -39,3 +39,5 @@ scoring:
 weights_default: 1             # slider default for every main criterion (0–10)
 report:
   max_attempts: 3              # first try + 2 retries
+prices:                        # USD per 1M tokens for the cost evaluation; add your models' current prices
+  gpt-6-luna: {input: 0.10, output: 0.0}   # OpenAI Decisions docs (input tokens only)

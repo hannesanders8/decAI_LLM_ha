@@ -274,6 +274,83 @@ def report(
                 typer.echo(f"  [{a['rule']}] {v}")
 
 
+@app.command("baseline")
+def baseline(
+    corpus: int = typer.Option(..., "--corpus", help="Frozen corpus."),
+    repeat: int = typer.Option(3, "--repeat", min=1, help="Repetitions (SPEC: 3–5)."),
+    config: Path = ConfigOption,
+    db: Path = DbOption,
+) -> None:
+    """Baseline (SPEC §11): the LLM assesses the frozen corpus directly, without rules."""
+    from locassess.baseline import run_baseline
+    from locassess.providers.llm import make_llm
+
+    cfg = load_config(config)
+    conn = repo.connect(db)
+    repo.init_db(conn)
+    llm = make_llm(conn, cfg.models.llm_provider, cfg.models.llm_model)
+    crit = load_criteria_csv(Path("data/criteria.csv"))
+    for _ in range(repeat):
+        bid = run_baseline(conn, llm, corpus, crit, cfg.models.llm_model, cfg.models.temperature, progress=typer.echo)
+        row = conn.execute("SELECT * FROM baseline_assessment WHERE baseline_id = ?", (bid,)).fetchone()
+        data = json.loads(row["per_criterion_json"])
+        rated = sum(1 for c in data.values() if c.get("score") is not None)
+        overall = json.loads(row["overall_json"]).get("score")
+        typer.echo(f"baseline_id={bid} repetition={row['repetition']}  criteria rated={rated}/26  overall={overall}")
+
+
+annotate_app = typer.Typer(help="Manual gold standard: export a template, import the filled CSV.",
+                           no_args_is_help=True)
+app.add_typer(annotate_app, name="annotate")
+
+
+@annotate_app.command("template")
+def annotate_template(corpus: int = typer.Option(..., "--corpus"),
+                      annotator: str = typer.Option(..., "--annotator", help="Your name or initials."),
+                      out: Path = typer.Option(None, "--out", help="CSV to write (default results/annotation_...)."),
+                      db: Path = DbOption) -> None:
+    """Write a CSV with one row per selected article × main criterion to fill in."""
+    from locassess.annotation import write_template
+
+    out = out or Path("results") / f"annotation_corpus{corpus}_{annotator}.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    n = write_template(repo.connect(db), corpus, load_criteria_csv(Path("data/criteria.csv")), annotator, out)
+    typer.echo(f"wrote {out} ({n} rows). Fill affected (0/1); for affected = 1 also direction, intensity, "
+               "evidence_type, sub_id (or overarching) and sentence_keys (e.g. S3,S7). Guideline: data/codebook.yaml")
+
+
+@annotate_app.command("import")
+def annotate_import(csv_path: Path = typer.Option(..., "--csv"), db: Path = DbOption) -> None:
+    """Validate and import a filled annotation CSV (rows with empty `affected` are skipped)."""
+    from locassess.annotation import AnnotationError, import_annotations
+
+    try:
+        n = import_annotations(repo.connect(db), csv_path, load_criteria_csv(Path("data/criteria.csv")))
+    except AnnotationError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+    typer.echo(f"imported {n} annotations")
+
+
+@app.command("evaluate")
+def evaluate(
+    all_: bool = typer.Option(False, "--all", help="Run every metric for which data exists."),
+    metric: list[str] = typer.Option([], "--metric", help="Run selected metrics (repeatable)."),
+    out: Path = typer.Option(Path("results"), "--out"),
+    config: Path = ConfigOption,
+    db: Path = DbOption,
+) -> None:
+    """Evaluation (SPEC §13): metrics as CSV files in results/."""
+    from locassess.evaluation.run_eval import METRICS, run_metrics
+
+    unknown = [m for m in metric if m not in METRICS]
+    if unknown or not (all_ or metric):
+        raise typer.BadParameter(f"use --all or --metric with one of: {', '.join(METRICS)}", param_hint="--metric")
+    cfg = load_config(config)
+    for name, outcome in run_metrics(repo.connect(db), cfg, None if all_ else metric, out):
+        typer.echo(f"{name:<24} {outcome}")
+
+
 @app.command("ui")
 def ui(db: Path = DbOption, config: Path = ConfigOption) -> None:
     """Start the Streamlit web UI."""

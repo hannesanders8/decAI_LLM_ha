@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1–M7 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft, Stage 3 report, UI); next M8 (baseline & evaluation).
+**Status:** all milestones M1–M8 done (Stage 0–3, codebook draft, UI, baseline and evaluation).
 
 ## Setup
 
@@ -88,6 +88,34 @@ and date) and writes six fixed sections. Rule-based checks (SPEC §10.2 plus str
 completeness and summary length) validate the text; on violations the report is regenerated with
 the list of violations, up to `report.max_attempts`. Attempts and per-rule results are stored.
 
+### Baseline, gold standard and evaluation
+
+```bash
+locassess baseline --corpus 3 --repeat 3                     # direct LLM assessment of the frozen corpus (SPEC §11)
+locassess annotate template --corpus 3 --annotator HA         # CSV: one row per article × criterion
+locassess annotate import --csv results/annotation_corpus3_HA.csv
+locassess evaluate --all                                      # all metrics of SPEC §13 → results/eval_*.csv
+locassess evaluate --metric hallucination --metric cost_latency
+```
+
+The baseline also cites verbatim quotes per criterion; the evaluation checks them against the
+article texts (hallucination, share of statements backed by evidence). Metrics without the
+necessary data are skipped with a reason: extraction quality and calibration need annotations,
+stability needs ≥ 2 repetitions, search reproducibility two corpora of the same location.
+Add current model prices to `prices` in `config.yaml` for the cost evaluation.
+
+| Metric (`--metric`) | Output | SQ |
+|---|---|---|
+| `search_reproducibility` | Jaccard of selected URLs between corpora of the same location | — |
+| `extraction_quality` | precision / recall / F1 / κ of "affected", agreement on direction, intensity, type, sub-criterion, sentence (+ per criterion) | SQ1 |
+| `hallucination` | share of hybrid evidence sentences / baseline quotes not found in the article | SQ1 |
+| `extraction_stability` | identical cells and Fleiss' κ across repetitions | SQ1 |
+| `calibration` | Brier score, PR-AUC, reliability-diagram bins from stored P(affected) | SQ1 |
+| `scoring_robustness` | rating stability over 36 parameter variants; ranking Spearman over 1000 random slider draws | SQ2 |
+| `baseline_comparison` | score spread per criterion, share backed by evidence, rating agreement | SQ3 |
+| `report_reliability` | pass rate, attempts, failure rate per rule | SQ3 |
+| `cost_latency` | tokens, cost, latency per purpose and per run / article | — |
+
 ### Web UI
 
 ```bash
@@ -129,6 +157,9 @@ locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
 locassess/stage3_report.py Stage 3 profile JSON, report validation and retries
 locassess/pipeline.py    stage services shared by CLI and UI
 locassess/ui_data.py     data functions behind the UI (tables, sliders, ranking, exports)
+locassess/baseline.py    baseline (direct LLM assessment)
+locassess/annotation.py  gold-standard template export / import
+locassess/evaluation/    metric functions (metrics.py) and runner (run_eval.py)
 locassess/cli.py         command-line interface
 ui/app.py                Streamlit app
 ```
