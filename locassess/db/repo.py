@@ -143,3 +143,144 @@ def save_scoring_run(conn: sqlite3.Connection, extraction_run_id: int, profile: 
              json.dumps(o.weights, sort_keys=True), o.score, json.dumps(o.factor_scores, sort_keys=True)),
         )
     return scoring_run_id
+
+
+# ---------------------------------------------------------------------------
+# Stage 0: corpus, queries, hits, articles, sentences
+# ---------------------------------------------------------------------------
+
+class CorpusFrozenError(RuntimeError):
+    """Raised on any attempt to change articles or sentences of a frozen corpus."""
+
+
+ARTICLE_FIELDS = (
+    "url", "domain", "outlet", "title", "published_at", "fetched_at", "language", "text",
+    "text_sha256", "word_count", "relevance", "relevance_reason", "selected", "exclusion_reason",
+)
+
+
+def create_corpus(conn: sqlite3.Connection, location_json: str, period_from: str, period_to: str,
+                  config_hash: str, note: str | None = None) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO corpus (location_json, period_from, period_to, created_at, config_hash, note) "
+            "VALUES (?, ?, ?, ?, ?, ?)", (location_json, period_from, period_to, utc_now(), config_hash, note),
+        )
+    return cur.lastrowid
+
+
+def get_corpus(conn: sqlite3.Connection, corpus_id: int) -> sqlite3.Row:
+    row = conn.execute("SELECT * FROM corpus WHERE corpus_id = ?", (corpus_id,)).fetchone()
+    if row is None:
+        raise LookupError(f"corpus {corpus_id} not found")
+    return row
+
+
+def is_frozen(conn: sqlite3.Connection, corpus_id: int) -> bool:
+    return bool(get_corpus(conn, corpus_id)["frozen"])
+
+
+def _require_unfrozen(conn: sqlite3.Connection, corpus_id: int) -> None:
+    if is_frozen(conn, corpus_id):
+        raise CorpusFrozenError(f"corpus {corpus_id} is frozen and read-only")
+
+
+def insert_search_query(conn: sqlite3.Connection, corpus_id: int, main_id: str | None, query_text: str,
+                        language: str | None, prompt_version: str | None) -> int:
+    _require_unfrozen(conn, corpus_id)
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO search_query (corpus_id, main_id, query_text, language, prompt_version) "
+            "VALUES (?, ?, ?, ?, ?)", (corpus_id, main_id, query_text, language, prompt_version),
+        )
+    return cur.lastrowid
+
+
+def set_query_hit_count(conn: sqlite3.Connection, query_id: int, hit_count: int | None) -> None:
+    with conn:
+        conn.execute("UPDATE search_query SET hit_count = ? WHERE query_id = ?", (hit_count, query_id))
+
+
+def insert_search_hit(conn: sqlite3.Connection, query_id: int, url: str, title: str | None, rank: int,
+                      status: str, exclusion_reason: str | None = None) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO search_hit (query_id, url, title, rank, status, exclusion_reason) "
+            "VALUES (?, ?, ?, ?, ?, ?)", (query_id, url, title, rank, status, exclusion_reason),
+        )
+    return cur.lastrowid
+
+
+def insert_article(conn: sqlite3.Connection, corpus_id: int, **fields) -> int:
+    _require_unfrozen(conn, corpus_id)
+    unknown = set(fields) - set(ARTICLE_FIELDS)
+    if unknown:
+        raise ValueError(f"unknown article fields: {sorted(unknown)}")
+    cols = ["corpus_id", *fields]
+    with conn:
+        cur = conn.execute(
+            f"INSERT INTO article ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
+            (corpus_id, *fields.values()),
+        )
+    return cur.lastrowid
+
+
+def article_corpus_id(conn: sqlite3.Connection, article_id: int) -> int:
+    row = conn.execute("SELECT corpus_id FROM article WHERE article_id = ?", (article_id,)).fetchone()
+    if row is None:
+        raise LookupError(f"article {article_id} not found")
+    return row[0]
+
+
+def update_article(conn: sqlite3.Connection, article_id: int, **fields) -> None:
+    _require_unfrozen(conn, article_corpus_id(conn, article_id))
+    unknown = set(fields) - set(ARTICLE_FIELDS)
+    if unknown:
+        raise ValueError(f"unknown article fields: {sorted(unknown)}")
+    if not fields:
+        return
+    with conn:
+        conn.execute(
+            f"UPDATE article SET {', '.join(f'{k} = ?' for k in fields)} WHERE article_id = ?",
+            (*fields.values(), article_id),
+        )
+
+
+def get_articles(conn: sqlite3.Connection, corpus_id: int, selected_only: bool = False) -> list[sqlite3.Row]:
+    sql = "SELECT * FROM article WHERE corpus_id = ?"
+    if selected_only:
+        sql += " AND selected = 1"
+    return conn.execute(sql + " ORDER BY article_id", (corpus_id,)).fetchall()
+
+
+def hit_criteria(conn: sqlite3.Connection, corpus_id: int) -> list[tuple[str, str | None]]:
+    """(hit URL, main_id of the query that found it) for every search hit of a corpus."""
+    return [(r["url"], r["main_id"]) for r in conn.execute(
+        "SELECT h.url, q.main_id FROM search_hit h JOIN search_query q USING (query_id) "
+        "WHERE q.corpus_id = ? ORDER BY h.hit_id", (corpus_id,),
+    )]
+
+
+def replace_sentences(conn: sqlite3.Connection, article_id: int,
+                      rows: list[tuple[str, int, str]]) -> None:
+    """Replace the sentences of an article. rows: (sentence_key, section, text)."""
+    _require_unfrozen(conn, article_corpus_id(conn, article_id))
+    with conn:
+        conn.execute("DELETE FROM sentence WHERE article_id = ?", (article_id,))
+        conn.executemany(
+            "INSERT INTO sentence (article_id, sentence_key, section, text) VALUES (?, ?, ?, ?)",
+            [(article_id, k, s, t) for k, s, t in rows],
+        )
+
+
+def get_sentences(conn: sqlite3.Connection, article_id: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM sentence WHERE article_id = ? ORDER BY CAST(SUBSTR(sentence_key, 2) AS INTEGER)",
+        (article_id,),
+    ).fetchall()
+
+
+def freeze_corpus(conn: sqlite3.Connection, corpus_id: int) -> None:
+    _require_unfrozen(conn, corpus_id)
+    with conn:
+        conn.execute("UPDATE corpus SET frozen = 1 WHERE corpus_id = ?", (corpus_id,))

@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1 (skeleton) and M2 (Stage 2 rule-based scoring) done.
+**Status:** M1 (skeleton), M2 (Stage 2 scoring) and M3 (Stage 0 corpus) done.
 
 ## Setup
 
@@ -25,6 +25,22 @@ cp .env.example .env            # then fill in the API keys you need
 locassess init-db          # create data/locassess.db with all tables (idempotent)
 locassess load-criteria    # load data/criteria.csv → 26 main criteria, 94 sub-criteria
 ```
+
+### Stage 0 — corpus
+
+Fill `data/whitelist.csv` (columns `domain, outlet_name, media_type, language, country`) and set
+`OPENAI_API_KEY` (or `BRAVE_API_KEY` with `search_provider: brave`) first.
+
+```bash
+locassess corpus build                       # queries → search → fetch → filter → relevance → selection
+locassess corpus import --csv urls.csv       # hand-picked URLs (columns url, note); same filter/selection
+locassess corpus log --corpus 1              # results/selection_log_corpus1.csv + per-article CSV
+locassess corpus freeze --corpus 1           # split into sentences, make the corpus read-only
+```
+
+`build` and `import` print the selection log and do not freeze, so the corpus can be reviewed first.
+
+### Stage 2 — scoring
 
 ```bash
 locassess score --extraction-run 4 [--params params.yaml] [--label NAME] [--config config.yaml]
@@ -54,6 +70,8 @@ locassess/config.py      config.yaml + .env loading, config hash
 locassess/criteria.py    criteria loader
 locassess/db/            SQLite schema (incl. frozen-corpus triggers) and data access
 locassess/providers/     provider interfaces and the call_log wrapper
+locassess/prompts.py     versioned prompt loader (prompts/*.md)
+locassess/stage0_corpus.py Stage 0 search, fetch, rule filter, selection, freeze, selection log
 locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
 locassess/cli.py         command-line interface
 ```

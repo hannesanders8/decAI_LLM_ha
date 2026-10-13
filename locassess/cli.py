@@ -83,6 +83,80 @@ def score(
     typer.echo(f"  overall: {'n/a' if g is None else f'{g:+.2f}'}")
 
 
+corpus_app = typer.Typer(help="Stage 0: build, import, freeze and inspect corpora.", no_args_is_help=True)
+app.add_typer(corpus_app, name="corpus")
+
+ConfigOption = typer.Option(Path("config.yaml"), "--config", help="Configuration file.")
+
+
+def _stage0_setup(config: Path, db: Path):
+    from locassess.providers.llm import make_llm
+
+    cfg = load_config(config)
+    conn = repo.connect(db)
+    repo.init_db(conn)
+    llm = make_llm(conn, cfg.models.llm_provider, cfg.models.llm_model)
+    criteria = load_criteria_csv(Path("data/criteria.csv"))
+    return cfg, conn, llm, criteria
+
+
+def _report_corpus(conn, corpus_id: int) -> None:
+    from locassess.stage0_corpus import selection_log
+
+    summary, _ = selection_log(conn, corpus_id)
+    for row in summary:
+        typer.echo(f"  {row['step']:<14} {row['count']:>5}  {row['detail']}")
+    typer.echo(f"corpus_id={corpus_id}  (review it, then: locassess corpus freeze --corpus {corpus_id})")
+
+
+@corpus_app.command("build")
+def corpus_build(config: Path = ConfigOption, db: Path = DbOption,
+                 note: str | None = typer.Option(None, "--note")) -> None:
+    """Generate queries, search, fetch, filter, rate relevance and select articles."""
+    from locassess.providers.search import make_search
+    from locassess.stage0_corpus import HttpFetcher, build_corpus
+
+    cfg, conn, llm, criteria = _stage0_setup(config, db)
+    search = make_search(conn, cfg.search_provider, cfg.models.llm_model, cfg.models.temperature)
+    corpus_id = build_corpus(conn, cfg, criteria, llm, search, HttpFetcher(conn), note=note, progress=typer.echo)
+    _report_corpus(conn, corpus_id)
+
+
+@corpus_app.command("import")
+def corpus_import(csv: Path = typer.Option(..., "--csv", help="CSV with columns url, note."),
+                  config: Path = ConfigOption, db: Path = DbOption,
+                  note: str | None = typer.Option(None, "--note")) -> None:
+    """Import hand-picked URLs; fetch, filter, relevance and selection run as in `build`."""
+    from locassess.stage0_corpus import HttpFetcher, import_corpus
+
+    cfg, conn, llm, criteria = _stage0_setup(config, db)
+    corpus_id = import_corpus(conn, cfg, criteria, llm, csv, HttpFetcher(conn), note=note, progress=typer.echo)
+    _report_corpus(conn, corpus_id)
+
+
+@corpus_app.command("freeze")
+def corpus_freeze(corpus: int = typer.Option(..., "--corpus"), config: Path = ConfigOption,
+                  db: Path = DbOption) -> None:
+    """Split selected articles into sentences and make the corpus read-only."""
+    from locassess.stage0_corpus import freeze
+
+    cfg = load_config(config)
+    conn = repo.connect(db)
+    n = freeze(conn, corpus, cfg.models.max_options_per_question)
+    typer.echo(f"corpus {corpus} frozen with {n} articles")
+
+
+@corpus_app.command("log")
+def corpus_log(corpus: int = typer.Option(..., "--corpus"), out: Path = typer.Option(Path("results"), "--out"),
+               db: Path = DbOption) -> None:
+    """Export the selection log (summary + per-article) as CSV."""
+    from locassess.stage0_corpus import export_selection_log
+
+    conn = repo.connect(db)
+    for p in export_selection_log(conn, corpus, out):
+        typer.echo(f"wrote {p}")
+
+
 def _deep_merge(base: dict, override: dict) -> dict:
     out = dict(base)
     for k, v in override.items():

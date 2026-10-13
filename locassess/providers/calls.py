@@ -70,7 +70,7 @@ def logged_call(
     model_version: str | None = None,
     max_attempts: int = 5,
     base_delay: float = 1.0,
-    sleep: Callable[[float], None] = time.sleep,
+    sleep: Callable[[float], None] | None = None,
     secrets: tuple[str, ...] | list[str] | None = None,
 ) -> tuple[CallOutcome, int]:
     """Run `fn`, retrying on RateLimited with exponential backoff, and write one call_log row.
@@ -79,6 +79,7 @@ def logged_call(
     is re-raised.
     """
     secrets = _env_secrets() if secrets is None else tuple(secrets)
+    sleep = sleep or time.sleep
     request_json = _to_json(request, secrets)
     attempt = 0
     while True:
