@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1 (skeleton), M2 (Stage 2 scoring) and M3 (Stage 0 corpus) done.
+**Status:** M1 (skeleton), M2 (Stage 2 scoring), M3 (Stage 0 corpus) and M5 (codebook draft) done; next M4 (Stage 1).
 
 ## Setup
 
@@ -26,6 +26,17 @@ locassess init-db          # create data/locassess.db with all tables (idempoten
 locassess load-criteria    # load data/criteria.csv → 26 main criteria, 94 sub-criteria
 ```
 
+### Codebook
+
+```bash
+locassess codebook-draft            # LLM drafts data/codebook.yaml (status: draft per criterion)
+locassess codebook-draft --force    # regenerate draft entries; entries with status: reviewed are kept
+```
+
+The codebook is the model instruction for Stage 1 and the annotation guideline for the gold
+standard. Review each entry in `data/codebook.yaml`, edit it, and set `status: reviewed`.
+Stage 0 takes its search terms from the codebook when the file exists.
+
 ### Stage 0 — corpus
 
 Fill `data/whitelist.csv` (columns `domain, outlet_name, media_type, language, country`) and set
@@ -33,6 +44,8 @@ Fill `data/whitelist.csv` (columns `domain, outlet_name, media_type, language, c
 
 ```bash
 locassess corpus build                       # queries → search → fetch → filter → relevance → selection
+locassess corpus build --criteria H02,H20    # small test run
+locassess corpus process --corpus 2          # finish an interrupted build without new searches
 locassess corpus import --csv urls.csv       # hand-picked URLs (columns url, note); same filter/selection
 locassess corpus log --corpus 1              # results/selection_log_corpus1.csv + per-article CSV
 locassess corpus freeze --corpus 1           # split into sentences, make the corpus read-only
@@ -67,7 +80,8 @@ All model and search calls are mocked in tests.
 data/criteria.csv        criteria framework (Hoang-Thi et al. 2026)
 data/whitelist.csv       allowed news domains (maintained by the author)
 locassess/config.py      config.yaml + .env loading, config hash
-locassess/criteria.py    criteria loader
+locassess/criteria.py    criteria + codebook loader (with validation)
+locassess/codebook_draft.py  LLM draft of the codebook
 locassess/db/            SQLite schema (incl. frozen-corpus triggers) and data access
 locassess/providers/     provider interfaces and the call_log wrapper
 locassess/prompts.py     versioned prompt loader (prompts/*.md)

@@ -29,6 +29,12 @@ class FakeLLM:
                 for lang in langs for i in range(int(variables["n"]))
             ]
             parsed = {"queries": qs}
+        elif prompt_id == "codebook_draft":
+            mid = variables["main_id"]
+            parsed = {"definition": f"Definition of {mid}.", "notes": f"Not {mid}.",
+                      "positive_examples": [f"{mid} good news.", f"{mid} good news."],
+                      "negative_examples": [f"{mid} bad news."],
+                      "search_terms": [f"{mid} term a", f"{mid}  term b"]}
         elif prompt_id == "relevance":
             parsed = {"relevance": self.relevance(variables), "justification": "Test justification."}
         else:

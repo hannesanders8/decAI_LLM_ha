@@ -85,6 +85,103 @@ def load_criteria_csv(
     return sorted(mains.values(), key=lambda m: m.main_id)
 
 
-def load_codebook(path: str | Path) -> dict:
-    """Codebook loading is implemented in milestone M5."""
-    raise NotImplementedError("codebook loading arrives in milestone M5")
+# ---------------------------------------------------------------------------
+# Codebook (data/codebook.yaml): model instruction (Stage 1) and annotation guideline
+# ---------------------------------------------------------------------------
+
+CODEBOOK_STATUSES = ("draft", "reviewed")
+
+
+@dataclass(frozen=True)
+class CodebookEntry:
+    main_id: str
+    status: str
+    name: str
+    definition: str
+    sub_criteria: tuple[str, ...]
+    positive_examples: tuple[str, ...]
+    negative_examples: tuple[str, ...]
+    search_terms: tuple[str, ...]
+    notes: str = ""
+
+
+@dataclass(frozen=True)
+class Codebook:
+    version: str
+    direction_definition: str
+    intensity_definition: dict[int, str]
+    evidence_type_definition: dict[str, str]
+    criteria: dict[str, CodebookEntry]
+
+    @property
+    def is_reviewed(self) -> bool:
+        return all(e.status == "reviewed" for e in self.criteria.values())
+
+    def drafts(self) -> list[str]:
+        return [k for k, e in self.criteria.items() if e.status != "reviewed"]
+
+
+def _str_list(value, where: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise CriteriaError(f"{where}: expected a list of strings")
+    return tuple(v.strip() for v in value if v.strip())
+
+
+def load_codebook(path: str | Path, criteria: list[MainCriterion] | None = None) -> Codebook:
+    """Load and validate codebook.yaml; with `criteria`, check it covers exactly the framework."""
+    import yaml
+
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    for key in ("version", "direction_definition", "intensity_definition", "evidence_type_definition", "criteria"):
+        if key not in data:
+            raise CriteriaError(f"{path}: missing top-level key {key!r}")
+    intensity = {int(k): str(v) for k, v in data["intensity_definition"].items()}
+    if set(intensity) != {1, 2, 3}:
+        raise CriteriaError(f"{path}: intensity_definition needs levels 1, 2, 3")
+    types = {str(k): str(v) for k, v in data["evidence_type_definition"].items()}
+    if set(types) != {"fact", "announcement", "opinion"}:
+        raise CriteriaError(f"{path}: evidence_type_definition needs fact, announcement, opinion")
+
+    entries: dict[str, CodebookEntry] = {}
+    for main_id, e in (data["criteria"] or {}).items():
+        where = f"{path}: criteria.{main_id}"
+        if not isinstance(e, dict):
+            raise CriteriaError(f"{where}: expected a mapping")
+        status = str(e.get("status", "draft"))
+        if status not in CODEBOOK_STATUSES:
+            raise CriteriaError(f"{where}: status must be one of {CODEBOOK_STATUSES}")
+        definition = str(e.get("definition") or "").strip()
+        if not definition:
+            raise CriteriaError(f"{where}: definition is empty")
+        entries[str(main_id)] = CodebookEntry(
+            main_id=str(main_id), status=status, name=str(e.get("name") or "").strip(), definition=definition,
+            sub_criteria=_str_list(e.get("sub_criteria"), where),
+            positive_examples=_str_list(e.get("positive_examples"), where),
+            negative_examples=_str_list(e.get("negative_examples"), where),
+            search_terms=_str_list(e.get("search_terms"), where),
+            notes=str(e.get("notes") or "").strip(),
+        )
+
+    if criteria is not None:
+        expected = {m.main_id: m for m in criteria}
+        missing, extra = sorted(set(expected) - set(entries)), sorted(set(entries) - set(expected))
+        if missing or extra:
+            raise CriteriaError(f"{path}: missing criteria {missing}, unknown criteria {extra}")
+        for main_id, e in entries.items():
+            m = expected[main_id]
+            if e.name != m.name:
+                raise CriteriaError(f"{path}: {main_id} name {e.name!r} differs from criteria.csv ({m.name!r})")
+            ids = [s.split()[0] for s in e.sub_criteria]
+            if ids != [s.sub_id for s in m.sub_criteria]:
+                raise CriteriaError(f"{path}: {main_id} sub_criteria do not match criteria.csv")
+            if not e.search_terms:
+                raise CriteriaError(f"{path}: {main_id} has no search_terms")
+
+    return Codebook(
+        version=str(data["version"]), direction_definition=str(data["direction_definition"]),
+        intensity_definition=intensity, evidence_type_definition=types,
+        criteria=dict(sorted(entries.items())),
+    )

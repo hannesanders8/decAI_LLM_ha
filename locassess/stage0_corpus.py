@@ -25,7 +25,7 @@ import httpx
 import trafilatura
 
 from locassess.config import AppConfig, config_hash
-from locassess.criteria import MainCriterion
+from locassess.criteria import Codebook, MainCriterion
 from locassess.db import repo
 from locassess.prompts import load_prompt
 from locassess.providers.calls import CallOutcome, RateLimited, logged_call
@@ -306,12 +306,12 @@ def select_articles(candidates: Iterable[Candidate], min_relevance: int, max_per
 # 7.1 Query generation
 # ---------------------------------------------------------------------------
 
-def criterion_search_info(main: MainCriterion) -> tuple[str, list[str]]:
-    """(definition, search terms) from the criteria framework.
-
-    The codebook (M5) will provide reviewed definitions and search terms; until then the
-    sub-criteria names (or the main criterion name) seed the queries.
-    """
+def criterion_search_info(main: MainCriterion, codebook: Codebook | None = None) -> tuple[str, list[str]]:
+    """(definition, search terms): from the codebook if available, else from the criteria framework
+    (sub-criteria names, or the main criterion name)."""
+    entry = codebook.criteria.get(main.main_id) if codebook else None
+    if entry is not None and entry.search_terms:
+        return entry.definition, list(entry.search_terms)
     terms = [s.name for s in main.sub_criteria] or [main.name]
     definition = f"{main.name} ({main.factor})" + (f": {', '.join(terms)}" if main.sub_criteria else "")
     return definition, terms
@@ -349,13 +349,13 @@ def query_schema(languages: list[str]) -> dict:
     }
 
 
-def generate_queries(llm: LLM, cfg: AppConfig, main: MainCriterion, date_from: date,
-                     date_to: date) -> tuple[list[tuple[str, str]], str | None]:
+def generate_queries(llm: LLM, cfg: AppConfig, main: MainCriterion, date_from: date, date_to: date,
+                     codebook: Codebook | None = None) -> tuple[list[tuple[str, str]], str | None]:
     """[(language, query)] with exactly queries_per_criterion queries per language (rules applied)."""
     langs = query_languages(cfg)
     names = location_names(cfg)
     n = cfg.corpus.queries_per_criterion
-    definition, terms = criterion_search_info(main)
+    definition, terms = criterion_search_info(main, codebook)
     result = llm.complete("query_generation", {
         "location_name": cfg.location.name, "region": cfg.location.region or "-",
         "country": cfg.location.country, "aliases": ", ".join(names),
@@ -437,7 +437,7 @@ def _record_hits(conn: sqlite3.Connection, corpus_id: int, query_id: int, hits: 
 
 def build_corpus(conn: sqlite3.Connection, cfg: AppConfig, criteria: list[MainCriterion], llm: LLM,
                  search: SearchProvider, fetch: Fetcher, run_date: date | None = None,
-                 note: str | None = None, progress: Progress = _quiet) -> int:
+                 note: str | None = None, progress: Progress = _quiet, codebook: Codebook | None = None) -> int:
     """Stage 0 steps 1–6. Returns the corpus_id; the corpus is not frozen yet."""
     whitelist = load_whitelist(cfg.whitelist_file)
     corpus_id, date_from, date_to = _new_corpus(conn, cfg, run_date or cfg.resolved_run_date(), note)
@@ -445,7 +445,7 @@ def build_corpus(conn: sqlite3.Connection, cfg: AppConfig, criteria: list[MainCr
     known: dict[str, int] = {}
     for main in criteria:
         progress(f"queries for {main.main_id} {main.name}")
-        queries, prompt_version = generate_queries(llm, cfg, main, date_from, date_to)
+        queries, prompt_version = generate_queries(llm, cfg, main, date_from, date_to, codebook)
         for lang, text in queries:
             qid = repo.insert_search_query(conn, corpus_id, main.main_id, text, lang, prompt_version)
             try:

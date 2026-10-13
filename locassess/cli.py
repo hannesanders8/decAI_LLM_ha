@@ -41,6 +41,32 @@ def load_criteria(
     typer.echo(f"{n_main} main criteria, {n_sub} sub-criteria")
 
 
+@app.command("codebook-draft")
+def codebook_draft(
+    out: Path = typer.Option(Path("data/codebook.yaml"), "--out", help="Codebook file to write."),
+    force: bool = typer.Option(False, "--force", help="Regenerate draft entries of an existing file."),
+    config: Path = typer.Option(Path("config.yaml"), "--config", help="Configuration file."),
+    db: Path = DbOption,
+) -> None:
+    """Draft data/codebook.yaml with the LLM (status: draft) for the author to review."""
+    from locassess.codebook_draft import write_codebook_draft
+    from locassess.criteria import load_codebook
+    from locassess.providers.llm import make_llm
+
+    cfg = load_config(config)
+    conn = repo.connect(db)
+    repo.init_db(conn)
+    criteria = load_criteria_csv(Path("data/criteria.csv"))
+    llm = make_llm(conn, cfg.models.llm_provider, cfg.models.llm_model)
+    try:
+        generated = write_codebook_draft(out, llm, criteria, cfg.models.llm_model, force=force,
+                                         temperature=cfg.models.temperature, progress=typer.echo)
+    except FileExistsError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--force") from exc
+    cb = load_codebook(out, criteria)
+    typer.echo(f"wrote {out}: {len(generated)} entries drafted, {len(cb.criteria) - len(cb.drafts())} reviewed kept")
+
+
 @app.command("score")
 def score(
     extraction_run: int = typer.Option(..., "--extraction-run", help="Extraction run to score."),
@@ -100,6 +126,19 @@ def _stage0_setup(config: Path, db: Path):
     return cfg, conn, llm, criteria
 
 
+def _load_codebook_for_search(criteria):
+    from locassess.criteria import load_codebook
+
+    path = Path("data/codebook.yaml")
+    if not path.exists():
+        typer.echo("note: data/codebook.yaml not found; queries use the sub-criteria names")
+        return None
+    cb = load_codebook(path, criteria)
+    if cb.drafts():
+        typer.echo(f"note: codebook has {len(cb.drafts())} unreviewed (draft) entries")
+    return cb
+
+
 def _report_corpus(conn, corpus_id: int) -> None:
     from locassess.stage0_corpus import selection_log
 
@@ -128,7 +167,9 @@ def corpus_build(config: Path = ConfigOption, db: Path = DbOption,
         note = note or f"test run: {', '.join(m.main_id for m in criteria)}"
     search = make_search(conn, cfg.search_provider, cfg.models.llm_model, cfg.models.temperature,
                          cfg.search_context_size)
-    corpus_id = build_corpus(conn, cfg, criteria, llm, search, HttpFetcher(conn), note=note, progress=typer.echo)
+    codebook = _load_codebook_for_search(criteria)
+    corpus_id = build_corpus(conn, cfg, criteria, llm, search, HttpFetcher(conn), note=note,
+                             progress=typer.echo, codebook=codebook)
     _report_corpus(conn, corpus_id)
 
 
