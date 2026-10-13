@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1–M6 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft, Stage 3 report); next M7 (UI).
+**Status:** M1–M7 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft, Stage 3 report, UI); next M8 (baseline & evaluation).
 
 ## Setup
 
@@ -88,6 +88,19 @@ and date) and writes six fixed sections. Rule-based checks (SPEC §10.2 plus str
 completeness and summary length) validate the text; on violations the report is regenerated with
 the list of violations, up to `report.max_attempts`. Attempts and per-rule results are stored.
 
+### Web UI
+
+```bash
+locassess ui          # opens the Streamlit app in the browser
+```
+
+Tabs: **Profile** (overall and factor scores, red flags, 26 criteria by factor with rating colour,
+status and trend, drill-down criterion → sub-criterion → evidence sentence → article link),
+**Compare locations** (ranking and side-by-side table), **Report**, **Selection log**,
+**Run pipeline** (build → freeze → extract → score from the browser) and **Export** (Markdown,
+PDF, CSV). The 26 weight sliders in the sidebar recalculate the overall score, factor scores and
+ranking live (SPEC §9.7; no model calls).
+
 All commands accept `--db PATH`; `load-criteria` also accepts `--csv PATH`.
 
 ## Tests
@@ -114,7 +127,10 @@ locassess/query_definition.py  versioned Query A/B questions built from the code
 locassess/stage1_extract.py  Stage 1 extraction rules and runs
 locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
 locassess/stage3_report.py Stage 3 profile JSON, report validation and retries
+locassess/pipeline.py    stage services shared by CLI and UI
+locassess/ui_data.py     data functions behind the UI (tables, sliders, ranking, exports)
 locassess/cli.py         command-line interface
+ui/app.py                Streamlit app
 ```
 
 ## Note on article texts

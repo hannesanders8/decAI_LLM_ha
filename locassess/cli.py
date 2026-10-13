@@ -11,7 +11,7 @@ import yaml
 from locassess.config import ScoringCfg, load_config
 from locassess.criteria import load_criteria_csv
 from locassess.db import repo
-from locassess.stage2_score import NO_STATEMENT, ScoringParams, build_profile, month_index, month_str
+from locassess.stage2_score import NO_STATEMENT
 
 app = typer.Typer(help="LocAssess — news-based assessment of production locations.", no_args_is_help=True)
 
@@ -117,19 +117,10 @@ def score(
         override = override.get("scoring", override)
         scoring_cfg = ScoringCfg.model_validate(_deep_merge(cfg.scoring.model_dump(), override))
 
-    conn = repo.connect(db)
-    period_from, period_to = repo.extraction_run_period(conn, extraction_run)
-    if period_to is None:
-        period_to = cfg.resolved_run_date()
-    if period_from is None:
-        period_from = month_str(month_index(period_to) - 12 * cfg.period.years_back)
-    p = ScoringParams.from_config(scoring_cfg, run_date=period_to, period_from=period_from)
+    from locassess.pipeline import score as score_run
 
-    profile = build_profile(
-        repo.load_evidence(conn, extraction_run), repo.criteria_factors(conn).keys(), p,
-        default_slider=cfg.weights_default, factors=repo.criteria_factors(conn),
-    )
-    scoring_run_id = repo.save_scoring_run(conn, extraction_run, profile, label)
+    conn = repo.connect(db)
+    scoring_run_id, profile = score_run(conn, cfg, extraction_run, scoring_cfg, label)
     conn.close()
 
     typer.echo(f"scoring_run_id={scoring_run_id}")
@@ -281,6 +272,18 @@ def report(
         for a in json.loads(row["checks_json"])[-1]["checks"]:
             for v in a["violations"]:
                 typer.echo(f"  [{a['rule']}] {v}")
+
+
+@app.command("ui")
+def ui(db: Path = DbOption, config: Path = ConfigOption) -> None:
+    """Start the Streamlit web UI."""
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "LOCASSESS_DB": str(db), "LOCASSESS_CONFIG": str(config)}
+    app_path = Path(__file__).resolve().parents[1] / "ui" / "app.py"
+    raise typer.Exit(subprocess.call([sys.executable, "-m", "streamlit", "run", str(app_path)], env=env))
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

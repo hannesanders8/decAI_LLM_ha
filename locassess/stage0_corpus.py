@@ -111,9 +111,9 @@ def match_whitelist(url: str, whitelist: Iterable[WhitelistEntry]) -> WhitelistE
 _TRACKING = re.compile(r"^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|ref|cmpid)$", re.I)
 
 
-def normalize_url(url: str) -> str:
+def normalize_url(url: str | None) -> str:
     """Canonical form for duplicate detection: https, bare host, no fragment/tracking/trailing slash."""
-    parts = urlsplit(url.strip())
+    parts = urlsplit((url or "").strip())
     query = urlencode(sorted((k, v) for k, v in parse_qsl(parts.query) if not _TRACKING.match(k)))
     path = parts.path.rstrip("/") or "/"
     return urlunsplit(("https", _bare_host(parts.netloc), path, query, ""))
