@@ -44,6 +44,7 @@ class ModelsCfg(_Strict):
     llm_model: str
     temperature: float = 0
     decision_provider: Literal["jev", "openai_decisions", "llm_structured"] = "llm_structured"
+    decision_model: str | None = None   # null = adapter default (gpt-6-luna / jev-latest); llm_structured uses llm_model
     llm_confidence_method: Literal["logprobs", "sampling"] = "logprobs"
     sampling_n: int = Field(5, ge=1)
     max_options_per_question: int = Field(255, ge=2)

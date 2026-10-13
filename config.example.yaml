@@ -20,6 +20,7 @@ models:
   llm_model: "<set in .env or here>"
   temperature: 0
   decision_provider: "llm_structured"   # jev | openai_decisions | llm_structured
+  decision_model: null                  # null = adapter default (gpt-6-luna, jev-latest); llm_structured uses llm_model
   llm_confidence_method: "logprobs"     # logprobs | sampling
   sampling_n: 5
   max_options_per_question: 255         # smallest option limit of all compared models

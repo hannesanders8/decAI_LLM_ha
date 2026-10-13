@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1 (skeleton), M2 (Stage 2 scoring), M3 (Stage 0 corpus) and M5 (codebook draft) done; next M4 (Stage 1).
+**Status:** M1–M5 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft); next M6 (Stage 3 report).
 
 ## Setup
 
@@ -53,6 +53,19 @@ locassess corpus freeze --corpus 1           # split into sentences, make the co
 
 `build` and `import` print the selection log and do not freeze, so the corpus can be reviewed first.
 
+### Stage 1 — evidence extraction
+
+```bash
+locassess extract --corpus 3 --model openai_decisions          # OpenAI Decisions API (gpt-6-luna)
+locassess extract --corpus 3 --model llm_structured --repeat 3 # gpt-4.1 + JSON schema, logprobs or sampling
+locassess extract --corpus 3 --model jev                       # TypeSafe Jev; needs TYPESAFE_API_KEY
+```
+
+Runs on a frozen corpus. Per article section: Query A (26 yes/no questions), then Query B for every
+criterion with P(yes) ≥ `affected_threshold`. All decision models receive the same questions,
+options and codebook text (`locassess/query_definition.py`, versioned). The full probability
+distributions are stored in `model_response`; fixed rules derive `evidence` (SPEC §8.4).
+
 ### Stage 2 — scoring
 
 ```bash
@@ -83,9 +96,11 @@ locassess/config.py      config.yaml + .env loading, config hash
 locassess/criteria.py    criteria + codebook loader (with validation)
 locassess/codebook_draft.py  LLM draft of the codebook
 locassess/db/            SQLite schema (incl. frozen-corpus triggers) and data access
-locassess/providers/     provider interfaces and the call_log wrapper
+locassess/providers/     LLM, search and decision-model adapters; call_log wrapper
 locassess/prompts.py     versioned prompt loader (prompts/*.md)
 locassess/stage0_corpus.py Stage 0 search, fetch, rule filter, selection, freeze, selection log
+locassess/query_definition.py  versioned Query A/B questions built from the codebook
+locassess/stage1_extract.py  Stage 1 extraction rules and runs
 locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
 locassess/cli.py         command-line interface
 ```

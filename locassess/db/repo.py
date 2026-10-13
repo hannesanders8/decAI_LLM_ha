@@ -284,3 +284,63 @@ def freeze_corpus(conn: sqlite3.Connection, corpus_id: int) -> None:
     _require_unfrozen(conn, corpus_id)
     with conn:
         conn.execute("UPDATE corpus SET frozen = 1 WHERE corpus_id = ?", (corpus_id,))
+
+
+# ---------------------------------------------------------------------------
+# Stage 1: extraction runs, model responses, evidence
+# ---------------------------------------------------------------------------
+
+def next_repetition(conn: sqlite3.Connection, corpus_id: int, model: str) -> int:
+    row = conn.execute("SELECT MAX(repetition) FROM extraction_run WHERE corpus_id = ? AND model = ?",
+                       (corpus_id, model)).fetchone()
+    return (row[0] or 0) + 1
+
+
+def create_extraction_run(conn: sqlite3.Connection, corpus_id: int, model: str, query_definition_version: str,
+                          codebook_version: str, repetition: int, confidence_method: str) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO extraction_run (corpus_id, model, query_definition_version, codebook_version, "
+            "repetition, confidence_method, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (corpus_id, model, query_definition_version, codebook_version, repetition, confidence_method, utc_now()),
+        )
+    return cur.lastrowid
+
+
+def set_extraction_run_model_version(conn: sqlite3.Connection, extraction_run_id: int, model_version: str | None) -> None:
+    with conn:
+        conn.execute("UPDATE extraction_run SET model_version = ? WHERE extraction_run_id = ?",
+                     (model_version, extraction_run_id))
+
+
+def get_extraction_run(conn: sqlite3.Connection, extraction_run_id: int) -> sqlite3.Row:
+    row = conn.execute("SELECT * FROM extraction_run WHERE extraction_run_id = ?", (extraction_run_id,)).fetchone()
+    if row is None:
+        raise LookupError(f"extraction run {extraction_run_id} not found")
+    return row
+
+
+def insert_model_response(conn: sqlite3.Connection, extraction_run_id: int, article_id: int, section: int,
+                          query_type: str, main_id: str | None, distributions_json: str,
+                          call_id: int | None) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO model_response (extraction_run_id, article_id, section, query_type, main_id, "
+            "distributions_json, call_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (extraction_run_id, article_id, section, query_type, main_id, distributions_json, call_id),
+        )
+    return cur.lastrowid
+
+
+def insert_evidence(conn: sqlite3.Connection, extraction_run_id: int, article_id: int, main_id: str,
+                    sub_id: str | None, direction: int, intensity: int, evidence_type: str, event_date: str,
+                    confidence: float, sentence_keys: list[str], sentence_text: str, needs_review: bool) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO evidence (extraction_run_id, article_id, main_id, sub_id, direction, intensity, "
+            "evidence_type, event_date, confidence, sentence_keys, sentence_text, needs_review) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (extraction_run_id, article_id, main_id, sub_id, direction, intensity, evidence_type, event_date,
+             confidence, json.dumps(sentence_keys), sentence_text, int(needs_review)),
+        )
+    return cur.lastrowid

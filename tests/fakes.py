@@ -71,3 +71,27 @@ class FakeFetcher:
         if isinstance(page, int):
             return FetchResult(page, url, None)
         return FetchResult(200, url, page)
+
+
+class FakeDecisionModel:
+    """Decision model double: `answer(state, question) -> {option: prob}` or None (= refusal)."""
+
+    name = "fake"
+    confidence_method = "native"
+
+    def __init__(self, answer):
+        self.answer = answer
+        self.calls: list[tuple[str, list]] = []
+
+    def decide(self, state, questions, purpose, version=None):
+        from locassess.providers.decision import DecisionResult
+
+        self.calls.append((purpose, questions))
+        res = DecisionResult(distributions={}, call_ids=[], model_version="fake-1")
+        for q in questions:
+            d = self.answer(state, q)
+            if d is None:
+                res.refusals.append(q.key)
+            else:
+                res.distributions[q.key] = {v: d.get(v, 0.0) for v in q.values}
+        return res

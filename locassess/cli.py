@@ -67,6 +67,39 @@ def codebook_draft(
     typer.echo(f"wrote {out}: {len(generated)} entries drafted, {len(cb.criteria) - len(cb.drafts())} reviewed kept")
 
 
+@app.command("extract")
+def extract(
+    corpus: int = typer.Option(..., "--corpus", help="Frozen corpus to extract evidence from."),
+    model: str | None = typer.Option(None, "--model", help="jev | openai_decisions | llm_structured "
+                                                           "(default: models.decision_provider)."),
+    repeat: int = typer.Option(1, "--repeat", min=1, help="Number of repetitions (one extraction run each)."),
+    config: Path = typer.Option(Path("config.yaml"), "--config", help="Configuration file."),
+    codebook_path: Path = typer.Option(Path("data/codebook.yaml"), "--codebook", help="Codebook file."),
+    db: Path = DbOption,
+) -> None:
+    """Stage 1: extract evidence with a decision model (Query A + Query B per article)."""
+    from locassess.criteria import load_codebook
+    from locassess.providers.decision import make_decision_model
+    from locassess.stage1_extract import run_extraction, run_summary
+
+    cfg = load_config(config)
+    criteria = load_criteria_csv(Path("data/criteria.csv"))
+    cb = load_codebook(codebook_path, criteria)
+    if cb.drafts():
+        typer.echo(f"note: codebook has {len(cb.drafts())} unreviewed (draft) entries")
+    conn = repo.connect(db)
+    repo.init_db(conn)
+    dm = make_decision_model(conn, cfg, model)
+    for _ in range(repeat):
+        run_id = run_extraction(conn, corpus, dm, cb, codebook_path, criteria, cfg.scoring.extraction,
+                                progress=typer.echo)
+        s = run_summary(conn, run_id)
+        typer.echo(f"extraction_run_id={run_id}  model={s['model']} ({s['model_version']})  "
+                   f"repetition={s['repetition']}  method={s['confidence_method']}  "
+                   f"A={s['responses_A']} B={s['responses_B']}  evidence={s['evidence']} "
+                   f"(needs review: {s['needs_review']})")
+
+
 @app.command("score")
 def score(
     extraction_run: int = typer.Option(..., "--extraction-run", help="Extraction run to score."),
