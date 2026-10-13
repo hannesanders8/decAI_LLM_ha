@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "locassess"
+version = "0.1.0"
+description = "News-based assessment of production locations (Master's thesis)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "httpx>=0.27",
+    "openai>=1.40",
+    "trafilatura>=1.12",
+    "pysbd>=0.3.4",
+    "streamlit>=1.36",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "scipy>=1.13",
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.34"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+locassess = "locassess.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["locassess*"]
+
+[tool.setuptools.package-data]
+"locassess.db" = ["schema.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,99 @@
+factor_en,factor_de,main_id,main_criterion_en,main_criterion_de,sub_id,sub_criterion_en,sub_criterion_de,paper_sources,paper_table
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.01,Raw material,Rohstoffe,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.02,Power supply,Energieversorgung,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.03,Water supply,Wasserversorgung,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.04,Land availability,Flächenverfügbarkeit,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.05,Room for expansion,Erweiterungsmöglichkeiten,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.06,Favorable climate,Günstiges Klima,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H01,Natural resources,Natürliche Ressourcen,H01.07,Favorable geography,Günstige Geografie,"[1,15,90–97]",Tab. 2
+Physical factors,Physische Faktoren,H02,Transportation system,Verkehrssystem,H02.01,Railway,Schiene,"[22,98–101]",Tab. 2
+Physical factors,Physische Faktoren,H02,Transportation system,Verkehrssystem,H02.02,Highway,Autobahn/Fernstraße,"[22,98–101]",Tab. 2
+Physical factors,Physische Faktoren,H02,Transportation system,Verkehrssystem,H02.03,Seaport,Seehafen,"[22,98–101]",Tab. 2
+Physical factors,Physische Faktoren,H02,Transportation system,Verkehrssystem,H02.04,Airport,Flughafen,"[22,98–101]",Tab. 2
+Physical factors,Physische Faktoren,H03,Distance,Entfernung,H03.01,Distance to market,Entfernung zum Absatzmarkt,"[35,102–109]",Tab. 2
+Physical factors,Physische Faktoren,H03,Distance,Entfernung,H03.02,Distance to natural resource,Entfernung zu natürlichen Ressourcen,"[35,102–109]",Tab. 2
+Physical factors,Physische Faktoren,H03,Distance,Entfernung,H03.03,Distance to labor resource,Entfernung zu Arbeitskräften,"[35,102–109]",Tab. 2
+Physical factors,Physische Faktoren,H03,Distance,Entfernung,H03.04,Approximate to higher educational and research institutions,Nähe zu Hochschulen und Forschungseinrichtungen,"[35,102–109]",Tab. 2
+Physical factors,Physische Faktoren,H03,Distance,Entfernung,H03.05,Access to distribution channels,Zugang zu Vertriebskanälen,"[35,102–109]",Tab. 2
+Physical factors,Physische Faktoren,H04,Spatial relation,Räumliche Beziehungen,H04.01,Spatial properties (relation impact to business failure or success),Räumliche Eigenschaften (Einfluss auf Unternehmenserfolg/-misserfolg),"[9,110–112]",Tab. 2
+Physical factors,Physische Faktoren,H04,Spatial relation,Räumliche Beziehungen,H04.02,Linkages,Verflechtungen,"[9,110–112]",Tab. 2
+Physical factors,Physische Faktoren,H04,Spatial relation,Räumliche Beziehungen,H04.03,Zoning change,Änderung der Flächennutzungsplanung,"[9,110–112]",Tab. 2
+Physical factors,Physische Faktoren,H05,Urban agglomeration,Urbane Agglomeration,,,,"[50,107,113]",Tab. 2
+Environmental factors,Umweltfaktoren,H06,Environmental pollution,Umweltverschmutzung,,,,"[10,116]",Tab. 3
+Environmental factors,Umweltfaktoren,H07,Requirements for environmental protection,Umweltschutzanforderungen,,,,"[9,19,88,117]",Tab. 3
+Environmental factors,Umweltfaktoren,H08,Climate change,Klimawandel,,,,"[9,10]",Tab. 3
+Political factors,Politische Faktoren,H09,Tax,Steuern,H09.01,Local property tax,Lokale Grundsteuer,"[10,119,120]",Tab. 4
+Political factors,Politische Faktoren,H09,Tax,Steuern,H09.02,Multiple tax,Mehrfachbesteuerung,"[10,119,120]",Tab. 4
+Political factors,Politische Faktoren,H10,Local and national government legislation/Policy,Lokale und nationale Gesetzgebung/Politik,H10.01,Financial incentives policy,Finanzielle Förderpolitik,"[36,103,116,121,122]",Tab. 4
+Political factors,Politische Faktoren,H10,Local and national government legislation/Policy,Lokale und nationale Gesetzgebung/Politik,H10.02,Industrial revenue bonds,Industrial Revenue Bonds (Industrieanleihen),"[36,103,116,121,122]",Tab. 4
+Political factors,Politische Faktoren,H10,Local and national government legislation/Policy,Lokale und nationale Gesetzgebung/Politik,H10.03,Industrial revenue bonds for pollution control,Industrial Revenue Bonds für Emissionsminderung,"[36,103,116,121,122]",Tab. 4
+Political factors,Politische Faktoren,H10,Local and national government legislation/Policy,Lokale und nationale Gesetzgebung/Politik,H10.04,Land rent reduction,Reduzierung der Grundstückspacht,"[36,103,116,121,122]",Tab. 4
+Political factors,Politische Faktoren,H10,Local and national government legislation/Policy,Lokale und nationale Gesetzgebung/Politik,H10.05,"Cash grant assistance for purposes such as training, start-up cost",Zuschüsse z. B. für Schulung und Anlaufkosten,"[36,103,116,121,122]",Tab. 4
+Political factors,Politische Faktoren,H11,Political status,Politische Lage,H11.01,Political structure,Politische Struktur,"[10,63,123,124]",Tab. 4
+Political factors,Politische Faktoren,H11,Political status,Politische Lage,H11.02,Political stability,Politische Stabilität,"[10,63,123,124]",Tab. 4
+Political factors,Politische Faktoren,H11,Political status,Politische Lage,H11.03,Attitudes of local and state governments,Haltung lokaler und staatlicher Regierungen,"[10,63,123,124]",Tab. 4
+Political factors,Politische Faktoren,H11,Political status,Politische Lage,H11.04,Employment rights,Arbeitnehmerrechte,"[10,63,123,124]",Tab. 4
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.01,Labor cost,Arbeitskosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.02,Land cost,Grundstückskosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.03,Transportation cost,Transportkosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.04,Energy cost,Energiekosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.05,Product cost,Produktkosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.06,Construction cost,Baukosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.07,Utilities cost,Versorgungskosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.08,Cost of living in the area,Lebenshaltungskosten in der Region,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.09,Cost of municipal services,Kosten kommunaler Dienstleistungen,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H12,Cost/expenditure,Kosten/Ausgaben,H12.10,Opportunity cost,Opportunitätskosten,"[10,15,119]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.01,Purely economic,Rein wirtschaftliche Faktoren,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.02,Business climate,Geschäftsklima,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.03,Free competition,Freier Wettbewerb,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.04,Forces of production,Produktivkräfte,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.05,Economic change,Wirtschaftlicher Wandel,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H13,Economic environment,Wirtschaftliches Umfeld,H13.06,The competition between countries,Wettbewerb zwischen Ländern,"[10,35,88,95,96,108,127,128]",Tab. 5
+Economic factors,Ökonomische Faktoren,H14,Marketing,Marketing,H14.01,Marketing environment,Marketingumfeld,"[99,129]",Tab. 5
+Economic factors,Ökonomische Faktoren,H14,Marketing,Marketing,H14.02,Marketing assistance,Marketingunterstützung,"[99,129]",Tab. 5
+Economic factors,Ökonomische Faktoren,H15,Capital,Kapital,H15.01,Accumulation of capital,Kapitalakkumulation,"[10,29,48,101]",Tab. 5
+Economic factors,Ökonomische Faktoren,H15,Capital,Kapital,H15.02,Capital circulation,Kapitalzirkulation,"[10,29,48,101]",Tab. 5
+Economic factors,Ökonomische Faktoren,H16,Market,Markt,H16.01,Market size/economies scale,Marktgröße/Skaleneffekte,"[10,104,130]",Tab. 5
+Economic factors,Ökonomische Faktoren,H16,Market,Markt,H16.02,Consumer market,Konsumgütermarkt,"[10,104,130]",Tab. 5
+Economic factors,Ökonomische Faktoren,H16,Market,Markt,H16.03,Market volatility,Marktvolatilität,"[10,104,130]",Tab. 5
+Economic factors,Ökonomische Faktoren,H17,External economies,Externe Effekte (External Economies),H17.01,Area's business climate,Geschäftsklima der Region,"[97,99,125,131]",Tab. 5
+Economic factors,Ökonomische Faktoren,H17,External economies,Externe Effekte (External Economies),H17.02,Environmental degradation in urban centers,Umweltbelastung in urbanen Zentren,"[97,99,125,131]",Tab. 5
+Economic factors,Ökonomische Faktoren,H18,Business related service,Unternehmensnahe Dienstleistungen,H18.01,Technology and computer service,Technologie- und IT-Dienstleistungen,"[48,125]",Tab. 5
+Economic factors,Ökonomische Faktoren,H18,Business related service,Unternehmensnahe Dienstleistungen,H18.02,Banking service,Bankdienstleistungen,"[48,125]",Tab. 5
+Economic factors,Ökonomische Faktoren,H18,Business related service,Unternehmensnahe Dienstleistungen,H18.03,Logistics,Logistik,"[48,125]",Tab. 5
+Economic factors,Ökonomische Faktoren,H19,Economic agglomeration,Ökonomische Agglomeration,H19.01,Industry agglomeration,Branchenagglomeration,"[50,104,132]",Tab. 5
+Economic factors,Ökonomische Faktoren,H19,Economic agglomeration,Ökonomische Agglomeration,H19.02,Economies agglomeration,Wirtschaftsagglomeration,"[50,104,132]",Tab. 5
+Social factors,Soziale Faktoren,H20,Population potential,Bevölkerungspotenzial,H20.01,Labor resource/population density,Arbeitskräftepotenzial/Bevölkerungsdichte,"[9,35,133]",Tab. 6
+Social factors,Soziale Faktoren,H20,Population potential,Bevölkerungspotenzial,H20.02,Availability of skilled labor,Verfügbarkeit qualifizierter Arbeitskräfte,"[9,35,133]",Tab. 6
+Social factors,Soziale Faktoren,H20,Population potential,Bevölkerungspotenzial,H20.03,Availability of semiskilled labor,Verfügbarkeit angelernter Arbeitskräfte,"[9,35,133]",Tab. 6
+Social factors,Soziale Faktoren,H20,Population potential,Bevölkerungspotenzial,H20.04,Availability of unskilled labor,Verfügbarkeit ungelernter Arbeitskräfte,"[9,35,133]",Tab. 6
+Social factors,Soziale Faktoren,H20,Population potential,Bevölkerungspotenzial,H20.05,Availability of professional and technical personnel,Verfügbarkeit von Fach- und technischem Personal,"[9,35,133]",Tab. 6
+Social factors,Soziale Faktoren,H21,Chance and purely personal factors,Zufall und rein persönliche Faktoren,H21.01,Development opportunities,Entwicklungschancen,[134],Tab. 6
+Social factors,Soziale Faktoren,H21,Chance and purely personal factors,Zufall und rein persönliche Faktoren,H21.02,The owner's desire to live in the area,"Wunsch des Eigentümers, in der Region zu leben",[134],Tab. 6
+Social factors,Soziale Faktoren,H21,Chance and purely personal factors,Zufall und rein persönliche Faktoren,H21.03,Entrepreneurial skill,Unternehmerische Fähigkeiten,[134],Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.01,Quality of life,Lebensqualität,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.02,Average occupants per housing room,Durchschnittliche Bewohner pro Wohnraum,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.03,Residential housing,Wohnraumangebot,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.04,The general ambiance and lifestyle of the area,Allgemeines Ambiente und Lebensstil der Region,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.05,Labor Union,Gewerkschaften,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.06,Community attitude,Haltung der Gemeinde/Bevölkerung,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.07,Insurance considerations,Versicherungsaspekte,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.08,Social and cultural climate,Soziales und kulturelles Klima,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.09,"Availability of services such as health, fire, police and recreational facilities","Verfügbarkeit von Gesundheits-, Feuerwehr-, Polizei- und Freizeitangeboten","[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H22,Quality of life,Lebensqualität,H22.10,Environmental quality,Umweltqualität,"[10,21,100,128,135,136]",Tab. 6
+Social factors,Soziale Faktoren,H23,Education,Bildung,H23.01,Education and training,Aus- und Weiterbildung,"[10,113,137,138]",Tab. 6
+Social factors,Soziale Faktoren,H23,Education,Bildung,H23.02,Research,Forschung,"[10,113,137,138]",Tab. 6
+Social factors,Soziale Faktoren,H23,Education,Bildung,H23.03,Science and technological developments,Wissenschaftliche und technologische Entwicklung,"[10,113,137,138]",Tab. 6
+Social factors,Soziale Faktoren,H23,Education,Bildung,H23.04,The development of high-tech,Entwicklung von Hochtechnologie,"[10,113,137,138]",Tab. 6
+Public health factors,Faktoren der öffentlichen Gesundheit,H24,Epidemiology,Epidemiologie,H24.01,Disease prevalence,Krankheitsprävalenz,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H24,Epidemiology,Epidemiologie,H24.02,Epidemic risk,Epidemierisiko,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H24,Epidemiology,Epidemiologie,H24.03,Environmental health conditions,Umweltbezogene Gesundheitsbedingungen,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H24,Epidemiology,Epidemiologie,H24.04,Population vulnerability,Vulnerabilität der Bevölkerung,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H25,Health system,Gesundheitssystem,H25.01,Accessibility to emergency healthcare services,Erreichbarkeit der Notfallversorgung,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H25,Health system,Gesundheitssystem,H25.02,Hospital and ICU capacity,Krankenhaus- und Intensivkapazität,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H25,Health system,Gesundheitssystem,H25.03,Availability of medical resources,Verfügbarkeit medizinischer Ressourcen,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H25,Health system,Gesundheitssystem,H25.04,Emergency response capability,Notfall-Reaktionsfähigkeit,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H26,Public Health Surveillance,Gesundheitsüberwachung (Surveillance),H26.01,Disease surveillance systems,Krankheitsüberwachungssysteme,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H26,Public Health Surveillance,Gesundheitsüberwachung (Surveillance),H26.02,Early warning mechanisms,Frühwarnmechanismen,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H26,Public Health Surveillance,Gesundheitsüberwachung (Surveillance),H26.03,Epidemic preparedness and response protocols,Pläne zur Epidemievorsorge und -reaktion,"WHO; [88,89,139]",Tab. 7
+Public health factors,Faktoren der öffentlichen Gesundheit,H26,Public Health Surveillance,Gesundheitsüberwachung (Surveillance),H26.04,Inter-agency coordination and information sharing,Behördenübergreifende Koordination und Informationsaustausch,"WHO; [88,89,139]",Tab. 7

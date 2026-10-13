@@ -1,0 +1,39 @@
+location:
+  name: "Leipzig"
+  region: "Saxony"
+  country: "Germany"
+  local_language: "de"
+  aliases: ["Leipzig", "Region Leipzig"]
+period:
+  years_back: 5                # hard filter in Stage 0
+  run_date: null               # null = today; fixed date allowed for reproducibility
+corpus:
+  target_articles: 15
+  max_per_year: 4
+  min_words: 200
+  queries_per_criterion: 2     # 2–3
+  hits_per_query: 10
+  min_relevance: 1             # 0–2 scale
+whitelist_file: "data/whitelist.csv"
+models:
+  llm_provider: "openai"       # openai | anthropic
+  llm_model: "<set in .env or here>"
+  temperature: 0
+  decision_provider: "llm_structured"   # jev | openai_decisions | llm_structured
+  llm_confidence_method: "logprobs"     # logprobs | sampling
+  sampling_n: 5
+  max_options_per_question: 255         # smallest option limit of all compared models
+search_provider: "openai_web_search"    # openai_web_search | brave | manual_csv
+scoring:
+  type_weights: {fact: 1.0, announcement: 0.6, opinion: 0.3}
+  half_life_months: 24
+  rating_thresholds: {green: 1.0, red: -1.0}
+  trend_threshold: 1.0
+  status: {sufficient_min_evidence: 3, sufficient_min_articles: 2}
+  extraction: {affected_threshold: 0.5, review_threshold: 0.6, second_sentence_gap: 0.2}
+  red_flags:
+    recent_months: 12
+    knockout_criteria: []      # e.g. ["H01", "H20"]; author decides
+weights_default: 1             # slider default for every main criterion (0–10)
+report:
+  max_attempts: 3              # first try + 2 retries

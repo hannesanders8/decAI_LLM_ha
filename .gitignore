@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# LocAssess
+data/locassess.db
+data/*.db-journal
+results/
+config.yaml
