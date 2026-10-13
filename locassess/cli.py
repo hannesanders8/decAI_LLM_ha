@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -250,6 +251,36 @@ def corpus_log(corpus: int = typer.Option(..., "--corpus"), out: Path = typer.Op
     conn = repo.connect(db)
     for p in export_selection_log(conn, corpus, out):
         typer.echo(f"wrote {p}")
+
+
+@app.command("report")
+def report(
+    scoring_run: int = typer.Option(..., "--scoring-run", help="Scoring run to report on."),
+    out: Path = typer.Option(Path("results"), "--out", help="Folder for the Markdown export."),
+    config: Path = ConfigOption,
+    db: Path = DbOption,
+) -> None:
+    """Stage 3: write the report from the profile, validate it, retry on violations."""
+    from locassess.providers.llm import make_llm
+    from locassess.stage3_report import generate_report
+
+    cfg = load_config(config)
+    conn = repo.connect(db)
+    llm = make_llm(conn, cfg.models.llm_provider, cfg.models.llm_model)
+    report_id = generate_report(conn, llm, scoring_run, cfg.report.max_attempts, cfg.models.temperature,
+                                progress=typer.echo)
+    row = conn.execute("SELECT * FROM report WHERE report_id = ?", (report_id,)).fetchone()
+    if row["passed"]:
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"report_scoring{scoring_run}.md"
+        path.write_text(row["text"] + "\n", encoding="utf-8")
+        typer.echo(f"report_id={report_id} passed after {row['attempts']} attempt(s); wrote {path}")
+    else:
+        typer.echo(f"report_id={report_id} FAILED validation after {row['attempts']} attempts "
+                   "(stored as failed; the UI shows the profile without report text)")
+        for a in json.loads(row["checks_json"])[-1]["checks"]:
+            for v in a["violations"]:
+                typer.echo(f"  [{a['rule']}] {v}")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

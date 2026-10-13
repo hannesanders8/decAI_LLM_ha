@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** M1–M5 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft); next M6 (Stage 3 report).
+**Status:** M1–M6 done (skeleton, Stage 2 scoring, Stage 0 corpus, Stage 1 extraction, codebook draft, Stage 3 report); next M7 (UI).
 
 ## Setup
 
@@ -77,6 +77,17 @@ scoring run with all 26 criterion scores, red flags and the equal-weight overall
 comes from the corpus (`period_from`/`period_to`), falling back to `config.yaml`. `--params` takes a
 YAML that overrides parts of the `scoring` section, e.g. `scoring: {half_life_months: 12}`.
 
+### Stage 3 — report
+
+```bash
+locassess report --scoring-run 2      # writes results/report_scoring2.md if validation passes
+```
+
+The LLM receives only the profile JSON (scores, ratings, red flags, evidence sentences with outlet
+and date) and writes six fixed sections. Rule-based checks (SPEC §10.2 plus structure, section
+completeness and summary length) validate the text; on violations the report is regenerated with
+the list of violations, up to `report.max_attempts`. Attempts and per-rule results are stored.
+
 All commands accept `--db PATH`; `load-criteria` also accepts `--csv PATH`.
 
 ## Tests
@@ -102,6 +113,7 @@ locassess/stage0_corpus.py Stage 0 search, fetch, rule filter, selection, freeze
 locassess/query_definition.py  versioned Query A/B questions built from the codebook
 locassess/stage1_extract.py  Stage 1 extraction rules and runs
 locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
+locassess/stage3_report.py Stage 3 profile JSON, report validation and retries
 locassess/cli.py         command-line interface
 ```
 
