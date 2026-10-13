@@ -360,7 +360,10 @@ def ui(db: Path = DbOption, config: Path = ConfigOption) -> None:
 
     env = {**os.environ, "LOCASSESS_DB": str(db), "LOCASSESS_CONFIG": str(config)}
     app_path = Path(__file__).resolve().parents[1] / "ui" / "app.py"
-    raise typer.Exit(subprocess.call([sys.executable, "-m", "streamlit", "run", str(app_path)], env=env))
+    raise typer.Exit(subprocess.call([sys.executable, "-m", "streamlit", "run", str(app_path),
+                                      "--server.showEmailPrompt", "false",      # no first-run email question
+                                      "--browser.gatherUsageStats", "false"],   # no telemetry to Streamlit
+                                     env=env))
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
