@@ -93,6 +93,7 @@ class AppConfig(_Strict):
     whitelist_file: Path = Path("data/whitelist.csv")
     models: ModelsCfg
     search_provider: Literal["openai_web_search", "brave", "manual_csv"] = "openai_web_search"
+    search_context_size: Literal["low", "medium", "high"] | None = None   # openai_web_search only
     scoring: ScoringCfg = Field(default_factory=ScoringCfg)
     weights_default: int = Field(1, ge=0, le=10)
     report: ReportCfg = Field(default_factory=ReportCfg)

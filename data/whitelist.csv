@@ -1,1 +1,8 @@
 domain,outlet_name,media_type,language,country
+taz.de,taz,national,de,DE
+euronews.com,Euronews,national,en,FR
+aljazeera.com,Al Jazeera,national,en,QA
+theguardian.com,The Guardian,national,en,GB
+bbc.com,BBC News,national,en,GB
+reuters.com,Reuters,agency,en,GB
+apnews.com,Associated Press,agency,en,US

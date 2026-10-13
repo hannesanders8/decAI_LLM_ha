@@ -111,13 +111,23 @@ def _report_corpus(conn, corpus_id: int) -> None:
 
 @corpus_app.command("build")
 def corpus_build(config: Path = ConfigOption, db: Path = DbOption,
+                 criteria_ids: str | None = typer.Option(
+                     None, "--criteria", help="Comma-separated main criteria for a small test run, e.g. H02,H20."),
                  note: str | None = typer.Option(None, "--note")) -> None:
     """Generate queries, search, fetch, filter, rate relevance and select articles."""
     from locassess.providers.search import make_search
     from locassess.stage0_corpus import HttpFetcher, build_corpus
 
     cfg, conn, llm, criteria = _stage0_setup(config, db)
-    search = make_search(conn, cfg.search_provider, cfg.models.llm_model, cfg.models.temperature)
+    if criteria_ids:
+        wanted = [c.strip().upper() for c in criteria_ids.split(",") if c.strip()]
+        unknown = sorted(set(wanted) - {m.main_id for m in criteria})
+        if unknown:
+            raise typer.BadParameter(f"unknown criteria: {', '.join(unknown)}", param_hint="--criteria")
+        criteria = [m for m in criteria if m.main_id in wanted]
+        note = note or f"test run: {', '.join(m.main_id for m in criteria)}"
+    search = make_search(conn, cfg.search_provider, cfg.models.llm_model, cfg.models.temperature,
+                         cfg.search_context_size)
     corpus_id = build_corpus(conn, cfg, criteria, llm, search, HttpFetcher(conn), note=note, progress=typer.echo)
     _report_corpus(conn, corpus_id)
 
@@ -132,6 +142,17 @@ def corpus_import(csv: Path = typer.Option(..., "--csv", help="CSV with columns 
     cfg, conn, llm, criteria = _stage0_setup(config, db)
     corpus_id = import_corpus(conn, cfg, criteria, llm, csv, HttpFetcher(conn), note=note, progress=typer.echo)
     _report_corpus(conn, corpus_id)
+
+
+@corpus_app.command("process")
+def corpus_process(corpus: int = typer.Option(..., "--corpus"), config: Path = ConfigOption,
+                   db: Path = DbOption) -> None:
+    """Continue an unfinished corpus without new searches: fetch, filter, relevance, selection."""
+    from locassess.stage0_corpus import HttpFetcher, process_corpus
+
+    cfg, conn, llm, criteria = _stage0_setup(config, db)
+    process_corpus(conn, corpus, cfg, criteria, llm, HttpFetcher(conn), progress=typer.echo)
+    _report_corpus(conn, corpus)
 
 
 @corpus_app.command("freeze")

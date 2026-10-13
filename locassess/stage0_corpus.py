@@ -482,25 +482,34 @@ def criteria_by_url(conn: sqlite3.Connection, corpus_id: int) -> dict[str, set[s
     return out
 
 
+def _passed_filter(row) -> bool:
+    """Article has text and was not excluded by fetch or filter (later steps may still exclude it)."""
+    reason = row["exclusion_reason"] or ""
+    return row["text"] is not None and (not reason or reason.startswith(("relevance:", "selection:")))
+
+
 def _process_articles(conn: sqlite3.Connection, corpus_id: int, cfg: AppConfig,
                       criteria: list[MainCriterion], whitelist: list[WhitelistEntry], llm: LLM,
                       fetch: Fetcher, date_from: date, date_to: date, progress: Progress) -> None:
+    """Stage 0 steps 3–6. Resumable: only unprocessed articles are fetched and only unrated
+    ones are rated; duplicates and the selection are recomputed over the current state."""
     names = location_names(cfg)
 
-    # 7.3 fetch (only whitelisted domains are downloaded; the rest is excluded by rule 1)
-    passed: list[FilterInput] = []
-    for a in repo.get_articles(conn, corpus_id):
+    # 7.3 fetch (only whitelisted domains are downloaded; the rest is excluded by rule 1) + 7.4 rules 1–4
+    todo = [a for a in repo.get_articles(conn, corpus_id) if a["fetched_at"] is None and not a["exclusion_reason"]]
+    for i, a in enumerate(todo, start=1):
         entry = match_whitelist(a["url"], whitelist)
         if entry is None:
             repo.update_article(conn, a["article_id"], exclusion_reason="filter:domain_not_whitelisted")
             continue
-        progress(f"fetch {a['url']}")
+        progress(f"fetch {i}/{len(todo)} {a['url']}")
+        fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         try:
             res = fetch(a["url"])
         except Exception as exc:
-            repo.update_article(conn, a["article_id"], exclusion_reason=f"fetch:error:{type(exc).__name__}")
+            repo.update_article(conn, a["article_id"], fetched_at=fetched_at,
+                                exclusion_reason=f"fetch:error:{type(exc).__name__}")
             continue
-        fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         if res.status != 200 or not res.html:
             repo.update_article(conn, a["article_id"], fetched_at=fetched_at,
                                 exclusion_reason=f"fetch:http_{res.status}")
@@ -509,46 +518,41 @@ def _process_articles(conn: sqlite3.Connection, corpus_id: int, cfg: AppConfig,
         if ext is None:
             repo.update_article(conn, a["article_id"], fetched_at=fetched_at, exclusion_reason="fetch:empty_text")
             continue
+        # the final URL counts, so redirects cannot bypass the whitelist
+        fi = FilterInput(a["article_id"], res.final_url or a["url"], ext.published_at, ext.text)
         repo.update_article(
             conn, a["article_id"], outlet=entry.outlet_name or entry.domain, title=ext.title or a["title"],
             published_at=ext.published_at.isoformat() if ext.published_at else None, fetched_at=fetched_at,
             language=entry.language or ext.language, text=ext.text,
             text_sha256=hashlib.sha256(ext.text.encode("utf-8")).hexdigest(), word_count=word_count(ext.text),
+            exclusion_reason=filter_reason(fi, whitelist, date_from, date_to, names, cfg.corpus.min_words),
         )
-        # 7.4 rule filter (rules 1–4); the final URL counts, so redirects cannot bypass the whitelist
-        fi = FilterInput(a["article_id"], res.final_url or a["url"], ext.published_at, ext.text)
-        reason = filter_reason(fi, whitelist, date_from, date_to, names, cfg.corpus.min_words)
-        if reason:
-            repo.update_article(conn, a["article_id"], exclusion_reason=reason)
-        else:
-            passed.append(fi)
 
     # 7.4 rule 5: duplicates (same URL or near-identical text); the earlier article is kept
+    passed = [FilterInput(r["article_id"], r["url"], None, r["text"])
+              for r in repo.get_articles(conn, corpus_id) if _passed_filter(r)]
     dups = find_duplicates(passed)
     for aid, original in dups.items():
-        repo.update_article(conn, aid, exclusion_reason=f"filter:duplicate_of_{original}")
-    passed = [a for a in passed if a.article_id not in dups]
+        repo.update_article(conn, aid, selected=0, exclusion_reason=f"filter:duplicate_of_{original}")
 
-    # 7.5 relevance (LLM suggestion)
-    rows = {r["article_id"]: r for r in repo.get_articles(conn, corpus_id)}
-    rated: list[int] = []
-    for a in passed:
-        r = rows[a.article_id]
-        progress(f"relevance {a.url}")
+    # 7.5 relevance (LLM suggestion); articles rated in an earlier run keep their rating
+    rows = [r for r in repo.get_articles(conn, corpus_id) if _passed_filter(r)]
+    unrated = [r for r in rows if r["relevance"] is None]
+    for i, r in enumerate(unrated, start=1):
+        progress(f"relevance {i}/{len(unrated)} {r['url']}")
         try:
-            rel, why = rate_relevance(llm, cfg, criteria, r["title"], r["published_at"], a.text)
+            rel, why = rate_relevance(llm, cfg, criteria, r["title"], r["published_at"], r["text"])
         except Exception as exc:
-            repo.update_article(conn, a.article_id, exclusion_reason=f"relevance:error:{type(exc).__name__}")
+            repo.update_article(conn, r["article_id"], exclusion_reason=f"relevance:error:{type(exc).__name__}")
             continue
-        repo.update_article(conn, a.article_id, relevance=rel, relevance_reason=why)
-        if rel < cfg.corpus.min_relevance:
-            repo.update_article(conn, a.article_id, exclusion_reason="relevance:below_min")
-        else:
-            rated.append(a.article_id)
+        repo.update_article(conn, r["article_id"], relevance=rel, relevance_reason=why,
+                            exclusion_reason="relevance:below_min" if rel < cfg.corpus.min_relevance else None)
 
-    # 7.6 selection (rules)
-    crit_by_url = criteria_by_url(conn, corpus_id)
+    # 7.6 selection (rules), recomputed from scratch over all relevant articles
     rows = {r["article_id"]: r for r in repo.get_articles(conn, corpus_id)}
+    rated = [aid for aid, r in rows.items() if _passed_filter(r) and r["relevance"] is not None
+             and r["relevance"] >= cfg.corpus.min_relevance and not (r["exclusion_reason"] or "").startswith("relevance:")]
+    crit_by_url = criteria_by_url(conn, corpus_id)
     candidates = [
         Candidate(aid, rows[aid]["relevance"], date.fromisoformat(rows[aid]["published_at"]),
                   frozenset(crit_by_url.get(normalize_url(rows[aid]["url"]), set())))
@@ -559,11 +563,25 @@ def _process_articles(conn: sqlite3.Connection, corpus_id: int, cfg: AppConfig,
     years = Counter(rows[aid]["published_at"][:4] for aid in chosen)
     for aid in rated:
         if aid in chosen:
-            repo.update_article(conn, aid, selected=1)
+            repo.update_article(conn, aid, selected=1, exclusion_reason=None)
         elif years[rows[aid]["published_at"][:4]] >= cfg.corpus.max_per_year:
-            repo.update_article(conn, aid, exclusion_reason="selection:max_per_year")
+            repo.update_article(conn, aid, selected=0, exclusion_reason="selection:max_per_year")
         else:
-            repo.update_article(conn, aid, exclusion_reason="selection:target_reached")
+            repo.update_article(conn, aid, selected=0, exclusion_reason="selection:target_reached")
+
+
+def process_corpus(conn: sqlite3.Connection, corpus_id: int, cfg: AppConfig, criteria: list[MainCriterion],
+                   llm: LLM, fetch: Fetcher, progress: Progress = _quiet) -> None:
+    """Continue an unfinished corpus (e.g. after an interrupted build) without new searches.
+
+    The corpus' own location and period are used; corpus rules (min_words, selection) come from `cfg`.
+    """
+    corpus = repo.get_corpus(conn, corpus_id)
+    if corpus["frozen"]:
+        raise repo.CorpusFrozenError(f"corpus {corpus_id} is frozen and read-only")
+    cfg = cfg.model_copy(update={"location": type(cfg.location).model_validate(json.loads(corpus["location_json"]))})
+    _process_articles(conn, corpus_id, cfg, criteria, load_whitelist(cfg.whitelist_file), llm, fetch,
+                      date.fromisoformat(corpus["period_from"]), date.fromisoformat(corpus["period_to"]), progress)
 
 
 # ---------------------------------------------------------------------------

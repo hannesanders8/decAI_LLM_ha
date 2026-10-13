@@ -97,12 +97,14 @@ def test_openai_web_search_request_and_domain_chunks(conn):
     resp = SimpleNamespace(model_dump=lambda mode=None: WEB_SEARCH_OUTPUT, model="m", usage=None)
     client = fake_client(resp, resp)
     domains = [f"d{i}.de" for i in range(150)]
-    hits = OpenAIWebSearch(conn, "m", client=client).search("Leipzig port", domains, FROM, TO, 2)
+    hits = OpenAIWebSearch(conn, "m", client=client, search_context_size="low").search(
+        "Leipzig port", domains, FROM, TO, 2)
     reqs = client.responses.requests
     assert len(reqs) == 2  # 100 + 50 domains
     assert reqs[0]["tools"][0]["type"] == "web_search"
     assert len(reqs[0]["tools"][0]["filters"]["allowed_domains"]) == 100
     assert reqs[0]["include"] == ["web_search_call.action.sources"]
+    assert reqs[0]["tools"][0]["search_context_size"] == "low"
     assert "Leipzig port" in reqs[0]["input"] and "2021-10-13" in reqs[0]["input"]
     assert [h.rank for h in hits] == [1, 2]
 

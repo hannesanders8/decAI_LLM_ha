@@ -183,3 +183,56 @@ def test_selection_log_unfinished_run(conn):
     counts = {r["step"]: r for r in summary}
     assert counts["fetched"]["count"] == 0 and counts["passed_filter"]["count"] == 0
     assert "3 not processed yet" in counts["whitelisted"]["detail"]
+
+
+def test_process_resumes_interrupted_build(setup):
+    """Searches done, nothing fetched (as after Ctrl+C) → process finishes the corpus like a full build."""
+    from locassess.stage0_corpus import process_corpus
+
+    conn, cfg, criteria, llm, search, fetcher = setup
+
+    class Interrupt(Exception):
+        pass
+
+    def broken_fetch(url):
+        raise Interrupt()
+
+    import locassess.stage0_corpus as s0
+    real = s0._process_articles
+    s0._process_articles = lambda *a, **k: None  # stop right after the searches
+    try:
+        cid = build_corpus(conn, cfg, criteria, llm, search, fetcher, run_date=RUN)
+    finally:
+        s0._process_articles = real
+    assert all(a["fetched_at"] is None for a in repo.get_articles(conn, cid))
+
+    process_corpus(conn, cid, cfg, criteria, llm, fetcher)
+    first = {a["url"]: (a["selected"], a["exclusion_reason"]) for a in repo.get_articles(conn, cid)}
+    assert {u.split("/")[-1] for u, (sel, _) in first.items() if sel} == {"a2", "a10"}
+
+    # a second run fetches nothing new, rates nothing new, and gives the same result
+    n_fetch, n_rel = len(fetcher.calls), sum(1 for p, _ in llm.calls if p == "relevance")
+    process_corpus(conn, cid, cfg, criteria, llm, fetcher)
+    assert len(fetcher.calls) == n_fetch
+    assert sum(1 for p, _ in llm.calls if p == "relevance") == n_rel
+    assert {a["url"]: (a["selected"], a["exclusion_reason"]) for a in repo.get_articles(conn, cid)} == first
+
+
+def test_process_refuses_frozen_corpus(setup):
+    from locassess.stage0_corpus import process_corpus
+
+    conn, cfg, criteria, llm, search, fetcher = setup
+    cid = build_corpus(conn, cfg, criteria, llm, search, fetcher, run_date=RUN)
+    freeze(conn, cid, 255)
+    with pytest.raises(repo.CorpusFrozenError):
+        process_corpus(conn, cid, cfg, criteria, llm, fetcher)
+
+
+def test_cli_build_rejects_unknown_criteria(tmp_path):
+    from typer.testing import CliRunner
+
+    from locassess.cli import app
+
+    r = CliRunner().invoke(app, ["corpus", "build", "--criteria", "H02,H99", "--config", str(EXAMPLE_CONFIG),
+                                 "--db", str(tmp_path / "x.db")])
+    assert r.exit_code != 0

@@ -62,8 +62,10 @@ class OpenAIWebSearch:
     MAX_ALLOWED_DOMAINS = 100   # documented limit of filters.allowed_domains
 
     def __init__(self, conn: sqlite3.Connection, model: str, client: Any = None,
-                 secrets: Secrets | None = None, temperature: float | None = 0):
+                 secrets: Secrets | None = None, temperature: float | None = 0,
+                 search_context_size: str | None = None):
         self.conn, self.model, self.temperature = conn, model, temperature
+        self.search_context_size = search_context_size
         if client is None:
             key = (secrets or Secrets()).openai_api_key
             if key is None or not key.get_secret_value():
@@ -82,6 +84,8 @@ class OpenAIWebSearch:
             tool: dict[str, Any] = {"type": "web_search"}
             if chunk:
                 tool["filters"] = {"allowed_domains": chunk}
+            if self.search_context_size:
+                tool["search_context_size"] = self.search_context_size
             request: dict[str, Any] = {"model": self.model, "input": text, "tools": [tool],
                                        "include": ["web_search_call.action.sources"]}
             if self.temperature is not None:
@@ -235,10 +239,10 @@ def load_manual_csv(path: str | Path) -> list[tuple[str, str]]:
     return rows
 
 
-def make_search(conn: sqlite3.Connection, provider: str, model: str,
-                temperature: float | None = 0) -> SearchProvider:
+def make_search(conn: sqlite3.Connection, provider: str, model: str, temperature: float | None = 0,
+                search_context_size: str | None = None) -> SearchProvider:
     if provider == "openai_web_search":
-        return OpenAIWebSearch(conn, model, temperature=temperature)
+        return OpenAIWebSearch(conn, model, temperature=temperature, search_context_size=search_context_size)
     if provider == "brave":
         return BraveSearch(conn)
     if provider == "manual_csv":
