@@ -223,6 +223,7 @@ class FilterInput:
     url: str
     published_at: date | None
     text: str
+    title: str | None = None
 
 
 def filter_reason(a: FilterInput, whitelist: list[WhitelistEntry], date_from: date, date_to: date,
@@ -234,7 +235,7 @@ def filter_reason(a: FilterInput, whitelist: list[WhitelistEntry], date_from: da
         return "filter:no_publication_date"
     if not date_from <= a.published_at <= date_to:
         return "filter:outside_period"
-    if not mentions_location(a.text, names):
+    if not mentions_location(f"{a.title or ''}\n{a.text}", names):   # title or text (author decision)
         return "filter:location_not_mentioned"
     if word_count(a.text) < min_words:
         return "filter:too_short"
@@ -519,11 +520,12 @@ def _process_articles(conn: sqlite3.Connection, corpus_id: int, cfg: AppConfig,
             repo.update_article(conn, a["article_id"], fetched_at=fetched_at, exclusion_reason="fetch:empty_text")
             continue
         # the final URL counts, so redirects cannot bypass the whitelist
-        fi = FilterInput(a["article_id"], res.final_url or a["url"], ext.published_at, ext.text)
+        title = ext.title or a["title"]
+        fi = FilterInput(a["article_id"], res.final_url or a["url"], ext.published_at, ext.text, title)
         repo.update_article(
-            conn, a["article_id"], outlet=entry.outlet_name or entry.domain, title=ext.title or a["title"],
+            conn, a["article_id"], outlet=entry.outlet_name or entry.domain, title=title,
             published_at=ext.published_at.isoformat() if ext.published_at else None, fetched_at=fetched_at,
-            language=entry.language or ext.language, text=ext.text,
+            language=ext.language or entry.language or None, text=ext.text,   # page language first
             text_sha256=hashlib.sha256(ext.text.encode("utf-8")).hexdigest(), word_count=word_count(ext.text),
             exclusion_reason=filter_reason(fi, whitelist, date_from, date_to, names, cfg.corpus.min_words),
         )

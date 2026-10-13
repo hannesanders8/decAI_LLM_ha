@@ -21,8 +21,8 @@ NAMES = ["Leipzig", "Region Leipzig"]
 TEXT = "Leipzig " + " ".join(f"word{i}" for i in range(300))
 
 
-def fi(url="https://www.lvz.de/a", pub=date(2025, 1, 1), text=TEXT, aid=1):
-    return FilterInput(aid, url, pub, text)
+def fi(url="https://www.lvz.de/a", pub=date(2025, 1, 1), text=TEXT, aid=1, title=None):
+    return FilterInput(aid, url, pub, text, title)
 
 
 def reason(a, min_words=200):
@@ -85,6 +85,12 @@ def test_rule_location_mention_case_insensitive():
     assert reason(fi(text=TEXT.replace("Leipzig", "Dresden"))) == "filter:location_not_mentioned"
     assert not mentions_location("Leipziger Allerlei", ["Leipzig"])  # whole word only
     assert mentions_location("in der region leipzig", NAMES)
+
+
+def test_rule_location_in_title_counts():
+    no_place = TEXT.replace("Leipzig", "Dresden")
+    assert reason(fi(text=no_place, title="Trauernde in Leipzig")) is None
+    assert reason(fi(text=no_place, title="Trauernde in Dresden")) == "filter:location_not_mentioned"
 
 
 def test_rule_min_words():

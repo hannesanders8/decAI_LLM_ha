@@ -46,10 +46,11 @@ class FakeSearch:
         return [SearchHit(u, f"hit {u}", "", i) for i, u in enumerate(self.results(query)[:max_results], start=1)]
 
 
-def article_html(title: str, published: str | None, body: str, lang: str = "en") -> str:
+def article_html(title: str, published: str | None, body: str, lang: str | None = "en") -> str:
     meta = f'<meta property="article:published_time" content="{published}T08:00:00Z">' if published else ""
     paras = "".join(f"<p>{p}</p>" for p in body.split("\n\n"))
-    return (f'<html lang="{lang}"><head><title>{title}</title>{meta}</head>'
+    lang_attr = f' lang="{lang}"' if lang else ""
+    return (f'<html{lang_attr}><head><title>{title}</title>{meta}</head>'
             f"<body><article><h1>{title}</h1>{paras}</article></body></html>")
 
 

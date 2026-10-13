@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from locassess.config import Secrets
+from locassess.prompts import load_prompt
 from locassess.providers import ProviderNotConfigured
 from locassess.providers.llm import OpenAILLM
 from locassess.providers.search import (
@@ -57,14 +58,15 @@ def test_openai_llm_structured_output_and_call_log(conn):
         "location_name", "region", "country", "aliases", "criteria_list", "title", "published_at", "text"]},
         json_schema={"type": "object"})
     assert res.parsed == [{"relevance": 2, "justification": "x"}]
-    assert res.prompt_version == "1.0" and res.model_version == "gpt-test-2026"
+    version = load_prompt("relevance").version
+    assert res.prompt_version == version and res.model_version == "gpt-test-2026"
     req = client.responses.requests[-1]
     assert req["text"]["format"] == {"type": "json_schema", "name": "relevance", "schema": {"type": "object"},
                                      "strict": True}
     assert req["temperature"] == 0 and len(client.responses.requests) == 2  # retried after 429
     row = conn.execute("SELECT * FROM call_log").fetchone()
     assert (row["provider"], row["purpose"], row["prompt_version"], row["input_tokens"]) == \
-        ("openai", "relevance", "1.0", 10)
+        ("openai", "relevance", version, 10)
 
 
 def test_openai_llm_requires_key(conn, monkeypatch, tmp_path):

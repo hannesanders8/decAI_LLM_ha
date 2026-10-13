@@ -28,14 +28,14 @@ def body(seed, n=120, place="Leipzig"):
 
 PAGES = {
     "https://www.lvz.de/a1": article_html("A1", "2025-05-01", body(1)),
-    "https://www.lvz.de/a2": article_html("A2", "2025-06-01", body(2)),
+    "https://www.lvz.de/a2": article_html("A2", "2025-06-01", body(2), lang=None),
     "https://www.mdr.de/a4": article_html("A4", "2019-01-01", body(4)),
     "https://www.mdr.de/a5": article_html("A5", "2025-01-01", body(5, place="Dresden")),
     "https://www.mdr.de/a6": article_html("A6", "2025-01-01", body(6, n=10)),
     "https://sport.mdr.de/a7": article_html("A7", "2025-05-02", body(1)),  # wire copy of A1
     "https://www.mdr.de/a8": 404,
     "https://www.mdr.de/a9": article_html("A9", "2023-01-01", body(9)),
-    "https://www.lvz.de/a10": article_html("A10", "2024-03-01", body(10)),
+    "https://www.lvz.de/a10": article_html("A10", "2024-03-01", body(10), lang="tr"),
 }
 RESULTS = {
     "H01": ["https://www.lvz.de/a1", "https://notlisted.com/a3", "https://www.mdr.de/a4"],
@@ -92,7 +92,8 @@ def test_build_applies_all_rules(setup):
     assert "https://notlisted.com/a3" not in fetcher.calls and len(fetcher.calls) == 9
 
     a2 = arts["https://www.lvz.de/a2"]
-    assert a2["outlet"] == "Leipziger Volkszeitung" and a2["language"] == "de"
+    assert a2["outlet"] == "Leipziger Volkszeitung" and a2["language"] == "de"  # no page language → whitelist
+    assert arts["https://www.lvz.de/a10"]["language"] == "tr"                   # page language wins
     assert a2["published_at"] == "2025-06-01" and a2["word_count"] > 50 and len(a2["text_sha256"]) == 64
     assert a2["relevance"] == 2 and a2["relevance_reason"]
 
