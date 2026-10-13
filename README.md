@@ -3,7 +3,7 @@
 News-based assessment of production locations (Master's thesis, Universität Hamburg).
 The full build specification is in [SPEC.md](SPEC.md).
 
-**Status:** milestone M1 (skeleton): configuration, database schema, criteria loader, call logging.
+**Status:** M1 (skeleton) and M2 (Stage 2 rule-based scoring) done.
 
 ## Setup
 
@@ -19,14 +19,23 @@ cp .env.example .env            # then fill in the API keys you need
 
 `config.yaml`, `.env`, `data/locassess.db` and `results/` are git-ignored. Never commit API keys.
 
-## Commands (M1)
+## Commands
 
 ```bash
 locassess init-db          # create data/locassess.db with all tables (idempotent)
 locassess load-criteria    # load data/criteria.csv → 26 main criteria, 94 sub-criteria
 ```
 
-Both accept `--db PATH`; `load-criteria` also accepts `--csv PATH`.
+```bash
+locassess score --extraction-run 4 [--params params.yaml] [--label NAME] [--config config.yaml]
+```
+
+`score` runs Stage 2 (pure rules, no model calls) on the evidence of an extraction run and stores a
+scoring run with all 26 criterion scores, red flags and the equal-weight overall score. The period
+comes from the corpus (`period_from`/`period_to`), falling back to `config.yaml`. `--params` takes a
+YAML that overrides parts of the `scoring` section, e.g. `scoring: {half_life_months: 12}`.
+
+All commands accept `--db PATH`; `load-criteria` also accepts `--csv PATH`.
 
 ## Tests
 
@@ -45,6 +54,7 @@ locassess/config.py      config.yaml + .env loading, config hash
 locassess/criteria.py    criteria loader
 locassess/db/            SQLite schema (incl. frozen-corpus triggers) and data access
 locassess/providers/     provider interfaces and the call_log wrapper
+locassess/stage2_score.py  Stage 2 scoring (pure functions, SPEC §9)
 locassess/cli.py         command-line interface
 ```
 
